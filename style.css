@@ -1,10 +1,3 @@
-/* style.css
-   Minimalista, mobile-first.
-   - Envelope pode exceder ecrã mas respeita max físico 20cm x 15cm
-   - Botões reduzidos a 2/3 (classe .small-handle)
-   - Flip entre texto.png e texto2.png gira sobre o lado mais comprido
-*/
-
 /* Reset leve */
 *,
 *::before,
@@ -35,12 +28,9 @@ html, body {
 }
 
 /* App wrapper */
-.app {
-  min-height: 100dvh;
-  display: block;
-}
+.app { min-height: 100dvh; display: block; }
 
-/* HERO: envelope centrado no ecrã */
+/* HERO: envelope centrado */
 .hero {
   height: 100dvh;
   display: flex;
@@ -50,56 +40,26 @@ html, body {
   background: var(--surface);
 }
 
-.envelope-wrap {
-  position: relative;
-  display: inline-block;
-  text-align: center;
-}
+.envelope-wrap { position: relative; display: inline-block; text-align: center; }
+.tap-hint { position: absolute; left: 50%; top: -36px; transform: translateX(-50%); margin: 0; font-size: 0.95rem; color: var(--muted); z-index: 6; pointer-events: none; }
 
-/* Hint acima do envelope */
-.tap-hint {
-  position: absolute;
-  left: 50%;
-  top: -36px;
-  transform: translateX(-50%);
-  margin: 0;
-  font-size: 0.95rem;
-  color: var(--muted);
-  z-index: 6;
-  pointer-events: none;
-}
+/* Envelope */
+.envelope { border: none; background: transparent; padding: 0; cursor: pointer; touch-action: manipulation; transition: transform var(--dur-s) var(--easing), opacity var(--dur-s) var(--easing); }
 
-/* Envelope: pode exceder ecrã mas limitado a 20cm x 15cm */
-.envelope {
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: transform var(--dur-s) var(--easing), opacity var(--dur-s) var(--easing);
-}
-
-/* Envelope image: allow exceed viewport (120vw) but cap at 20cm */
+/* Envelope image: never exceed viewport width and never exceed 20cm */
 .envelope-img {
-  width: min(120vw, 20cm); /* can exceed viewport width but never exceed 20cm */
+  width: min(100vw, 20cm); /* ensures it always fits the screen and respects 20cm max */
+  max-width: 20cm;
   height: auto;
   border-radius: calc(var(--radius) + 4px);
   box-shadow: var(--shadow);
   display: block;
 }
 
-/* Logo sobre o envelope */
-.envelope-logo {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(22vw, 120px);
-  z-index: 3;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12));
-}
+/* Logo */
+.envelope-logo { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(22vw, 120px); z-index: 3; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12)); }
 
-/* Imagem: limite físico 20cm x 15cm, sem crop */
+/* Generic image limits (20cm x 15cm) */
 .img-max {
   max-width: 20cm;
   max-height: 15cm;
@@ -110,50 +70,15 @@ html, body {
   display: block;
 }
 
-/* COVER: foto de capa (fundo branco) */
-.cover {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  background: #000;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur-m) var(--easing), transform var(--dur-l) var(--easing);
-  z-index: 60;
-}
+/* COVER */
+.cover { position: fixed; inset: 0; display: grid; grid-template-rows: 1fr auto; background: #000; opacity: 0; pointer-events: none; transition: opacity var(--dur-m) var(--easing), transform var(--dur-l) var(--easing); z-index: 60; }
+.cover.cover-white { background: #ffffff; }
+.cover.active { opacity: 1; pointer-events: auto; }
+.cover-inner { display:flex; align-items:center; justify-content:center; height:100dvh; width:100%; background: inherit; }
+.cover-img.responsive { max-width: min(20cm, 100%); max-height: min(15cm, 100vh); width:auto; height:auto; object-fit:contain; object-position:center; pointer-events:none; }
 
-.cover.cover-white {
-  background: #ffffff; /* white background for the cover page */
-}
-
-.cover.active {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* Inner wrapper centra a imagem (letterbox/pillarbox) */
-.cover-inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100dvh;
-  width: 100%;
-  background: inherit;
-}
-
-.cover-img.responsive {
-  max-width: min(20cm, 100%);
-  max-height: min(15cm, 100vh);
-  width: auto;
-  height: auto;
-  object-fit: contain;
-  object-position: center;
-  pointer-events: none;
-}
-
-/* Handle inferior da cover */
-.cover-handle {
+/* Handles (unified style) */
+.handle {
   position: absolute;
   left: 0;
   right: 0;
@@ -161,72 +86,42 @@ html, body {
   display: grid;
   place-items: center;
   gap: 8px;
-  padding: 12px 0 22px;
-  background: linear-gradient(to top, rgba(0,0,0,0.08), transparent 60%);
+  padding: 10px 0 20px;
+  background: linear-gradient(to top, rgba(255,255,255,0.02), transparent 60%);
   border: none;
   cursor: pointer;
   z-index: 120;
   touch-action: manipulation;
 }
 
-.cover-handle .handle-bar {
+.handle .handle-bar {
   width: 56px;
   height: 6px;
   border-radius: 999px;
   background: rgba(0,0,0,0.12);
 }
 
-.cover-handle .handle-text {
+.handle .handle-text {
   margin-top: 6px;
   font-size: 0.95rem;
-  color: rgba(0,0,0,0.95);
+  color: #0f172a;
+  font-weight: 600;
 }
 
-/* TEXT / FLIP SECTION */
-.flip-section {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: var(--surface);
-  display: none;
-}
+/* small-handle reduces to 2/3 */
+.small-handle .handle-bar { width: calc(56px * 0.66); height: calc(6px * 0.66); }
+.small-handle .handle-text { font-size: calc(0.95rem * 0.66); }
 
-/* show when active */
-.flip-section.active {
-  display: block;
-}
+/* Flip section */
+.flip-section { position: fixed; inset: 0; z-index: 50; background: var(--surface); display: none; }
+.flip-section.active { display: block; }
 
 /* 3D flip container */
-.flip-3d {
-  width: 100%;
-  height: 100dvh;
-  perspective: 1400px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.flip-3d-inner {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform var(--dur-l) var(--easing);
-  transform-origin: center center;
-}
+.flip-3d { width: 100%; height: 100dvh; perspective: 1400px; display:flex; align-items:center; justify-content:center; }
+.flip-3d-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform var(--dur-l) var(--easing); transform-origin: 50% 50%; }
 
 /* faces */
-.flip-face {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backface-visibility: hidden;
-  background: var(--surface);
-}
-
-/* front/back default transforms (will be overridden by JS axis logic) */
+.flip-face { position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; backface-visibility: hidden; background: var(--surface); }
 .flip-front { transform: rotateY(0deg); }
 .flip-back { transform: rotateY(180deg); }
 
@@ -234,53 +129,13 @@ html, body {
 .text-inner { display:flex; align-items:center; justify-content:center; height:100dvh; width:100%; }
 .texto-img.responsive { max-width: min(20cm, 100%); max-height: min(15cm, 100vh); width:auto; height:auto; object-fit:contain; }
 
-/* Handle style (reduced to 2/3 via .small-handle) */
-.text-handle,
-.cover-handle,
-.envelope .handle { /* generic */
-  --base-bar-w: 56px;
-  --base-bar-h: 6px;
-  --base-font: 0.95rem;
-}
-
-/* small-handle reduces to 2/3 */
-.small-handle .handle-bar,
-.small-handle .handle-text {
-  transform-origin: center;
-}
-
-/* explicit small sizes */
-.small-handle .handle-bar {
-  width: calc(56px * 0.66);
-  height: calc(6px * 0.66);
-  border-radius: 999px;
-  background: rgba(0,0,0,0.12);
-}
-
-.small-handle .handle-text {
-  font-size: calc(0.95rem * 0.66);
-  margin-top: 6px;
-  color: #0f172a;
-  font-weight: 600;
-}
-
-/* text-handle visual (black) */
-.text-handle { position: absolute; left:0; right:0; bottom: env(safe-area-inset-bottom,18px); display:grid; place-items:center; padding:12px 0 22px; z-index:130; background: linear-gradient(to top, rgba(255,255,255,0.06), transparent 60%); cursor:pointer; }
-.text-handle .handle-bar { width: calc(56px * 0.66); height: calc(6px * 0.66); background: rgba(0,0,0,0.12); border-radius:999px; }
-.text-handle .handle-text { color:#0f172a; font-weight:600; font-size:calc(0.95rem * 0.66); }
-
 /* Accessibility focus */
 button:focus { outline: 3px solid rgba(34,197,94,0.18); outline-offset: 4px; }
 
-/* States for sliding cover (cover moves down to reveal text behind) */
+/* sliding cover state */
 .app.sliding-cover .cover { transform: translateY(100%); }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .cover,
-  .flip-3d-inner,
-  .text-image,
-  .envelope {
-    transition: none !important;
-  }
+  .cover, .flip-3d-inner, .envelope { transition: none !important; }
 }
