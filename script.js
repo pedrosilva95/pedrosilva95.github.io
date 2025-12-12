@@ -1,8 +1,3 @@
-// script.js
-// Fluxo: envelope -> cover -> flip-section (texto.png <-> texto2.png)
-// Flip rotates around the longer side (X for tall images, Y for wide images).
-// Buttons reduced to 2/3 via CSS class .small-handle
-
 // Helper: attach both touchstart and click without double-fire
 function addTapListener(el, handler) {
   if (!el) return;
@@ -12,10 +7,7 @@ function addTapListener(el, handler) {
       touched = true;
       handler(e);
     } else if (e.type === 'click') {
-      if (touched) {
-        touched = false;
-        return;
-      }
+      if (touched) { touched = false; return; }
       handler(e);
     }
   };
@@ -35,75 +27,55 @@ document.addEventListener('DOMContentLoaded', () => {
   const flipSection = document.getElementById('flipSection');
   const flip3d = document.getElementById('flip3d');
   const flipInner = document.getElementById('flipInner');
+
   const flipForwardBtn = document.getElementById('flipForwardBtn');
   const flipBackBtn = document.getElementById('flipBackBtn');
 
   const imgFront = document.getElementById('imgFront'); // texto.png
   const imgBack = document.getElementById('imgBack');   // texto2.png
 
-  // Safety: ensure elements exist
-  if (!envelopeBtn || !cover || !coverHandle || !flipSection || !flip3d || !flipInner || !imgFront || !imgBack) {
-    console.warn('Alguns elementos essenciais não foram encontrados no DOM.');
+  // Safety: if elements missing, warn and return
+  if (!envelopeBtn || !cover || !coverHandle || !flipSection || !flipInner || !imgFront || !imgBack) {
+    console.warn('Elementos essenciais em falta no DOM. Verifica IDs.');
+    return;
   }
 
-  // Utility: determine longer side for an image element (returns 'X' or 'Y')
-  function longerAxisForImages(frontImg, backImg) {
-    // Use natural dimensions when available; fallback to bounding box
-    const fW = frontImg.naturalWidth || frontImg.width;
-    const fH = frontImg.naturalHeight || frontImg.height;
-    const bW = backImg.naturalWidth || backImg.width;
-    const bH = backImg.naturalHeight || backImg.height;
-
-    // average aspect ratio to decide dominant orientation
+  // Decide axis based on average aspect ratio of both images
+  function computeAxis() {
+    const fW = imgFront.naturalWidth || imgFront.width;
+    const fH = imgFront.naturalHeight || imgFront.height;
+    const bW = imgBack.naturalWidth || imgBack.width;
+    const bH = imgBack.naturalHeight || imgBack.height;
     const avgW = (fW + bW) / 2;
     const avgH = (fH + bH) / 2;
-
-    // If width >= height, longer side is horizontal -> rotate around Y (vertical axis)
     return avgW >= avgH ? 'Y' : 'X';
   }
 
-  // Apply axis-specific transforms to flipInner and faces
-  function setFlipAxis(axis) {
-    // axis: 'X' or 'Y'
-    if (!flipInner) return;
+  // Set initial face transforms according to axis
+  function prepareFaces(axis) {
     if (axis === 'X') {
-      // rotate around X: front 0, back 180deg around X
-      flipInner.style.transform = ''; // reset
-      flipInner.dataset.axis = 'X';
-      // set faces transforms via CSS variables or inline styles
-      const front = document.querySelector('.flip-front');
-      const back = document.querySelector('.flip-back');
-      if (front) front.style.transform = 'rotateX(0deg)';
-      if (back) back.style.transform = 'rotateX(180deg)';
-      // set transform origin for a long-side flip (horizontal center)
-      flipInner.style.transformOrigin = '50% 50%';
+      // rotate around X axis (flip top/bottom) — for tall images
+      flipInner.style.transform = 'rotateX(0deg)';
+      document.querySelector('.flip-front').style.transform = 'rotateX(0deg)';
+      document.querySelector('.flip-back').style.transform = 'rotateX(180deg)';
     } else {
-      // Y axis
-      flipInner.dataset.axis = 'Y';
-      const front = document.querySelector('.flip-front');
-      const back = document.querySelector('.flip-back');
-      if (front) front.style.transform = 'rotateY(0deg)';
-      if (back) back.style.transform = 'rotateY(180deg)';
-      flipInner.style.transformOrigin = '50% 50%';
+      // rotate around Y axis (flip left/right) — for wide images
+      flipInner.style.transform = 'rotateY(0deg)';
+      document.querySelector('.flip-front').style.transform = 'rotateY(0deg)';
+      document.querySelector('.flip-back').style.transform = 'rotateY(180deg)';
     }
+    flipInner.dataset.axis = axis;
   }
 
-  // Perform flip to show back (texto2)
+  // Flip to back
   function flipToBack(axis) {
-    if (!flipInner) return;
-    if (axis === 'X') {
-      flipInner.style.transform = 'rotateX(180deg)';
-    } else {
-      flipInner.style.transform = 'rotateY(180deg)';
-    }
-    flip3d.classList.add('flipped');
+    if (axis === 'X') flipInner.style.transform = 'rotateX(180deg)';
+    else flipInner.style.transform = 'rotateY(180deg)';
   }
 
-  // Perform flip to show front (texto)
-  function flipToFront(axis) {
-    if (!flipInner) return;
+  // Flip to front
+  function flipToFront() {
     flipInner.style.transform = 'rotateX(0deg) rotateY(0deg)';
-    flip3d.classList.remove('flipped');
   }
 
   // 1) Envelope -> mostrar cover
@@ -114,20 +86,16 @@ document.addEventListener('DOMContentLoaded', () => {
     envelopeBtn.style.transform = 'scale(0.98)';
 
     setTimeout(() => {
-      // Prepare flip section images (ensure they are loaded)
-      // Show cover and prepare flipSection behind it
-      if (flipSection) {
-        // keep hidden until needed
-        flipSection.classList.remove('active');
-      }
+      // Preload flip images (ensure natural sizes available)
+      imgFront.hidden = false;
+      imgBack.hidden = false;
 
-      if (cover) {
-        cover.hidden = false;
-        void cover.offsetWidth;
-        cover.classList.add('active');
-      }
+      // Show cover
+      cover.hidden = false;
+      void cover.offsetWidth;
+      cover.classList.add('active');
 
-      // Remove hero visually
+      // remove hero visually
       setTimeout(() => {
         const hero = document.querySelector('.hero');
         if (hero) hero.remove();
@@ -138,55 +106,48 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2) Cover -> reveal flipSection front (texto.png)
   addTapListener(coverHandle, (e) => {
     e.preventDefault();
-    if (!flipSection || !imgFront || !imgBack) return;
 
-    // ensure images are loaded to compute axis
-    const ensureLoaded = (img) => new Promise((res) => {
+    // ensure images loaded
+    const ensureLoaded = (img) => new Promise(res => {
       if (img.complete && img.naturalWidth) return res();
       img.onload = () => res();
       img.onerror = () => res();
     });
 
     Promise.all([ensureLoaded(imgFront), ensureLoaded(imgBack)]).then(() => {
-      // decide axis based on images' dimensions
-      const axis = longerAxisForImages(imgFront, imgBack);
-      setFlipAxis(axis);
+      const axis = computeAxis();
+      prepareFaces(axis);
 
-      // show flipSection (front face visible)
+      // show flip section
       flipSection.hidden = false;
       flipSection.classList.add('active');
 
-      // animate cover down to reveal flipSection
+      // animate cover down
       app.classList.add('sliding-cover');
       setTimeout(() => {
-        if (cover) {
-          cover.classList.remove('active');
-          cover.hidden = true;
-        }
+        cover.classList.remove('active');
+        cover.hidden = true;
         app.classList.remove('sliding-cover');
       }, 520);
     });
   });
 
-  // 3) From front (texto.png) -> flip to back (texto2.png)
-  addTapListener(document.getElementById('flipForwardBtn'), (e) => {
+  // 3) front -> back (flip)
+  addTapListener(flipForwardBtn, (e) => {
     e.preventDefault();
-    // compute axis again (in case orientation changed)
-    const axis = longerAxisForImages(imgFront, imgBack);
-    setFlipAxis(axis);
+    const axis = computeAxis();
+    prepareFaces(axis);
     flipToBack(axis);
   });
 
-  // 4) From back (texto2.png) -> flip to front (texto.png)
-  addTapListener(document.getElementById('flipBackBtn'), (e) => {
+  // 4) back -> front (flip back)
+  addTapListener(flipBackBtn, (e) => {
     e.preventDefault();
-    const axis = longerAxisForImages(imgFront, imgBack);
-    setFlipAxis(axis);
-    flipToFront(axis);
+    flipToFront();
   });
 
-  // Keyboard accessibility
-  [envelopeBtn, coverHandle, document.getElementById('flipForwardBtn'), document.getElementById('flipBackBtn')].forEach(btn => {
+  // keyboard accessibility
+  [envelopeBtn, coverHandle, flipForwardBtn, flipBackBtn].forEach(btn => {
     if (!btn) return;
     btn.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') {
