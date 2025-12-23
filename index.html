@@ -3,66 +3,116 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Convite</title>
-  <meta name="description" content="Convite: envelope → capa → texto → texto2 (link) com ciclo flip" />
-  <link rel="preload" href="envelope.png" as="image" />
+  <title>Débora & Pedro Convite de Casamento</title>
+  
+  <meta name="description" content="Estamos muito felizes por te convidar - vê o convite aqui!" />
+  
   <link rel="preload" href="logo.png" as="image" />
-  <link rel="preload" href="foto_capa.jpg" as="image" />
+  <link rel="preload" href="foto_capa.png" as="image" />
   <link rel="preload" href="texto.png" as="image" />
   <link rel="preload" href="texto2.png" as="image" />
+  <link rel="preload" href="only_foto.png" as="image" />
+
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
-  <main id="app" class="app">
-    <!-- HERO: envelope centrado -->
+  <main class="app">
+    <!-- ENVELOPE -->
     <section class="hero" id="hero">
       <div class="envelope-wrap">
-        <p class="tap-hint" id="tapHint">Toque para abrir</p>
+        <p class="tap-hint" id="tapHint">Clique para abrir</p>
+
         <button class="envelope" id="envelopeBtn" aria-label="Abrir convite">
-          <img class="envelope-img img-max" src="envelope.png" alt="Envelope" />
-          <img class="envelope-logo" src="logo.png" alt="Símbolo" />
+          <!-- FLAP -->
+          <span class="env-flap-group" aria-hidden="true">
+            <span class="env-flap-face env-flap-front"></span>
+            <span class="env-flap-face env-flap-back"></span>
+            <img class="flap-logo" src="logo.png" alt="" />
+          </span>
+
+          <!-- BODY -->
+          <span class="env-mask" aria-hidden="true">
+            <span class="env-back"></span>
+
+            <!-- CARD PREVIEW -->
+            <span class="env-card" aria-hidden="true">
+              <img class="env-card-img" src="foto_capa.png" alt="" />
+            </span>
+
+            <!-- FRONT POCKET -->
+            <span class="env-front"></span>
+
+            <!-- OUTER STROKE -->
+            <span class="env-stroke"></span>
+
+            <!-- SEAMS (se estiveres a usar) -->
+            <span class="seams" aria-hidden="true">
+              <span class="seam-fold"></span>
+              <span class="seam-front"></span>
+            </span>
+          </span>
         </button>
       </div>
     </section>
 
-    <!-- COVER: foto de capa (fundo branco; botão com texto preto) -->
-    <section class="cover cover-white" id="cover" hidden aria-label="Foto de capa">
-      <div class="cover-inner">
-        <img class="cover-img img-max responsive" src="foto_capa.jpg" alt="Foto de capa" />
+    <!-- COVER / FX -->
+    <section class="cover" id="cover" hidden aria-label="Transição">
+      <div class="cover-stage" id="coverStage" aria-hidden="true">
+        <div class="fx" aria-hidden="true">
+          <div class="fx-clip" aria-hidden="true">
+
+            <div class="fx-photo-out" aria-hidden="true">
+              <img id="photoOut" src="foto_capa.png" alt="">
+            </div>
+
+            <div class="fx-window" aria-hidden="true">
+              <div class="fx-slices" id="fxSlices" data-slice-src="only_foto.png" aria-hidden="true"></div>
+            </div>
+
+            <div class="fx-text-full" aria-hidden="true">
+              <img id="textFull" src="texto.png" alt="">
+            </div>
+
+          </div>
+        </div>
       </div>
-      <button class="handle handle--cover small-handle" id="coverHandle" aria-label="Deslizar para ver informações">
+
+      <button class="handle" id="coverHandle" disabled aria-label="Clique para iniciar a transição">
         <span class="handle-bar"></span>
         <span class="handle-text">Deslizar</span>
       </button>
     </section>
 
-    <!-- FLIP SECTION: ciclo entre texto.png e texto2.png (flip sobre o lado mais comprido) -->
-    <section class="flip-section" id="flipSection" hidden aria-label="Informações">
-      <div class="flip-3d" id="flip3d">
-        <div class="flip-3d-inner" id="flipInner" data-axis="Y">
-          <!-- face A: texto.png -->
-          <div class="flip-face flip-front" id="flipFront">
-            <div class="text-inner">
-              <img id="imgFront" class="texto-img img-max responsive" src="texto.png" alt="Informações" />
-            </div>
-            <button class="handle handle--text small-handle" id="flipForwardBtn" aria-label="Virar para a próxima imagem">
-              <span class="handle-bar"></span>
-              <span class="handle-text">Virar</span>
-            </button>
-          </div>
+    <!-- FINAL (FLIP) -->
+    <section class="flip-section" id="flipSection" hidden aria-label="Convite">
+      <div class="stage-center">
+        <div class="stage-frame flip-stage" id="flipStage">
+          <div class="flip-3d">
+            <div class="flip-3d-inner" id="flipInner">
 
-          <!-- face B: texto2.png com link -->
-          <div class="flip-face flip-back" id="flipBack">
-            <div class="text-inner">
-              <a class="texto2-link" href="https://we.are.planning.wedding/debora-e-pedro" target="_blank" rel="noopener noreferrer" aria-label="Abrir site do evento">
-                <img id="imgBack" class="texto-img img-max responsive" src="texto2.png" alt="Informações finais" />
-              </a>
+              <div class="flip-face flip-front">
+                <div class="text-inner">
+                  <img class="texto-img" src="texto.png" alt="Informações" />
+                </div>
+              </div>
+
+              <div class="flip-face flip-back">
+                <div class="text-inner">
+                  <img class="texto-img" src="texto2.png" alt="Informações finais" />
+                </div>
+              </div>
+
             </div>
-            <button class="handle handle--text small-handle" id="flipBackBtn" aria-label="Voltar à imagem anterior">
-              <span class="handle-bar"></span>
-              <span class="handle-text">Virar</span>
-            </button>
           </div>
+        </div>
+
+        <!-- ✅ Hint e botões fora do 3D (fixed no viewport) -->
+        <div class="tap-to-flip-hint" aria-hidden="true">Clique na imagem para virar</div>
+
+        <div class="back-actions" aria-label="Ações">
+          <button class="pill" id="btnCalendar" type="button">Guardar no calendário</button>
+          <button class="pill pill--ghost" id="btnSite" type="button">Site </button>
         </div>
       </div>
     </section>

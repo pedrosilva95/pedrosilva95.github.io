@@ -1,141 +1,825 @@
-/* Reset leve */
+/* =========================
+   RESET / BASE
+   ========================= */
 *,
 *::before,
-*::after { box-sizing: border-box; }
+*::after{ box-sizing: border-box; }
 
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
+html, body{
+  height:100%;
+  margin:0;
+  padding:0;
+  overflow:hidden;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: #f7f8f9;
-  color: #0f172a;
+  background: var(--bg);
+  color: var(--fg);
 }
 
-/* Variáveis */
-:root {
-  --accent: #22c55e;
-  --muted: #64748b;
-  --radius: 12px;
-  --shadow: 0 10px 30px rgba(2,6,23,0.12);
+:root{
+  --bg:#f7f8f9;
+  --fg:#0f172a;
+  --surface:#ffffff;
+  --muted:#64748b;
+
+  --shadow: 0 18px 44px rgba(15,23,42,.16);
+  --radius: 18px;
   --easing: cubic-bezier(.22,1,.36,1);
-  --dur-s: 260ms;
-  --dur-m: 420ms;
-  --dur-l: 700ms;
-  --surface: #ffffff;
+
+  /* ✅ Reserva inferior comum (cover + flip) para não haver “salto” */
+  --ui-reserve: calc(110px + env(safe-area-inset-bottom));
+
+  /* Card sizes (FX) */
+  --card-width: min(340px, 74vw);
+  --card-ar: 3 / 4.4;
+
+  /* Máscara (meias-luas) */
+  --notch-w: 1.755cm;
+  --notch-h: 0.655cm;
+  --mask-scale-x: 0.73;
+  --mask-scale-y: 0.75;
+  --mask-shift-x: 0px;
+  --mask-shift-y: 9px;
+  --mask-corner: 16;
+  --mask-topr: 20;
+  --fx-mask: none;
+
+  /* Alinhamento foto_capa <-> texto.png */
+  --media-scale: 1;
+  --media-x: 0px;
+  --media-y: 0px;
+
+  /* Alinhamento only_foto <-> foto_capa */
+  --slice-photo-scale: 1;
+  --slice-photo-x: 0px;
+  --slice-photo-y: 0px;
+
+  /* Envelope timing */
+  --dur-flap: 1800ms;
+  --dur-card: 1800ms;
+  --dur-preview: 0ms;
+
+  /* Papel / seams */
+  --paper-opacity: 0.7;
+  --paper-strength: 1.7;
+  --seam-opacity: 1;
+  --seam-width: 3px;
+  --stroke-opacity: 1;
+
+  /* Envelope colors */
+  --green-base:#7A8762;
+  --green-flap:#6e7a56;
+  --green-front:#74815d;
+
+  --stroke-light: rgba(255,255,255,.22);
+  --stroke-dark: rgba(15,23,42,.12);
+
+  /* Logo */
+  --logo-x:-15px;
+  --logo-y:65px;
+
+  /* Motion (3 fases) */
+  --card-start: 0%;
+  --card-preview: 0%;
+  --card-peek: -75%;
+
+  /* Pocket + flap */
+  --front-top: 0%;
+  --front-tip: 55.2%;
+  --flap-rot: -175deg;
+
+  /* Cartão (tamanho) */
+  --card-height: min(100%, calc(86% * 1.2));
+  --card-maxw:  min(100%, calc(88% * 1.2));
+  --card-radius: 0px;
+  --card-border-w: 0px;
+  --card-border-a: .30;
+  --card-shadow-a: 1;
+
+  /* Imagem dentro do cartão */
+  --card-img-x: 0px;
+  --card-img-y: 0px;
+  --card-fit: contain;
+
+  /* ✅ padding automático (JS escreve aqui) */
+  --card-pad-x: 0px;
+  --card-pad-y: 0px;
+
+  /* FX */
+  --fx-delay: 2000ms;
+  --dur-cortina: 3200ms;
+  --slices: 5;
+  --slice-gap: 0px;
+  --slice-seam-opacity: 0;
+
+  --dur-exit-env: 520ms;   /* envelope desce mais rápido */
+  --dur-exit-card: 900ms;  /* cartão desce mais lento */
+  --env-exit-y: 140vh;     /* garante que sai do ecrã */
+
+  /* Cover zoom */
+  --cover-zoom-start: 0.5;
+  --cover-zoom-end: 1;
+  --cover-zoom-dur: 1500ms;
 }
 
-/* App wrapper */
-.app { min-height: 100dvh; display: block; }
+.app{ min-height:100dvh; }
 
-/* HERO: envelope centrado */
-.hero {
-  height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 16px;
+:focus-visible{
+  outline: 3px solid rgba(99,102,241,.65);
+  outline-offset: 4px;
+  border-radius: 14px;
+}
+
+/* =========================
+   HERO / ENVELOPE
+   ========================= */
+.hero{
+  height:100dvh;
+  display:grid;
+  place-items:center;
+  padding:0 16px;
+  background:var(--surface);
+}
+
+.envelope-wrap{
+  position:relative;
+  text-align:center;
+}
+
+.tap-hint{
+  position:absolute;
+  left:50%;
+  top:-36px;
+  transform:translateX(-50%);
+  font-size:.95rem;
+  color:var(--muted);
+  z-index:200;
+  pointer-events:none;
+  transition: opacity 280ms var(--easing), transform 280ms var(--easing);
+}
+
+.envelope{
+  position:relative;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  touch-action:manipulation;
+  padding:0;
+  width:min(90vw, 420px);
+  aspect-ratio: 3 / 2;
+  isolation:isolate;
+  transition: transform 220ms var(--easing), filter 220ms var(--easing);
+}
+@media (hover:hover){
+  .envelope:hover{ transform: translateY(-2px); filter: brightness(1.02); }
+}
+.envelope:active{ transform: translateY(0) scale(.995); }
+
+/* Corpo do envelope */
+.env-mask{
+  position:absolute;
+  inset:0;
+  border-radius:var(--radius);
+  overflow:hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), transparent 40%), var(--green-base);
+  box-shadow:var(--shadow);
+  z-index:20;
+}
+
+/* Textura de papel */
+.env-mask::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:85;
+  pointer-events:none;
+  opacity:var(--paper-opacity);
+  mix-blend-mode: soft-light;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255,255,255,.35), transparent 55%),
+    radial-gradient(circle at 78% 40%, rgba(0,0,0,.16), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.035) 0 1px, transparent 1px 7px);
+  filter: contrast(calc(1 + (var(--paper-strength) * .06)));
+}
+
+/* SEAMS (contornos) */
+.seams{
+  position:absolute; inset:0;
+  z-index:1;
+  pointer-events:none;
+  opacity: var(--seam-opacity);
+  mix-blend-mode: overlay;
+}
+.seam-fold{
+  position:absolute;
+  left:0; right:0;
+  top: var(--front-top);
+  height: var(--seam-width);
+  background: rgba(255,255,255,.22);
+  box-shadow: 0 1px 0 rgba(0,0,0,.10);
+}
+.seam-front{
+  position:absolute; inset:0;
+  clip-path: polygon(0 var(--front-top), 50% var(--front-tip), 100% var(--front-top), 100% 100%, 0 100%);
+  box-shadow: inset 0 0 0 var(--seam-width) rgba(255,255,255,.16);
+}
+
+/* Stroke externo */
+.env-stroke{
+  position:absolute;
+  inset:0;
+  border-radius:var(--radius);
+  pointer-events:none;
+  z-index:120;
+  opacity: var(--stroke-opacity);
+  box-shadow:
+    inset 0 0 0 1px var(--stroke-light),
+    inset 0 0 0 2px rgba(0,0,0,.03);
+}
+
+.envelope.pull-card .env-mask{
+  z-index:200;
+  overflow:visible;
+}
+
+/* Fundo */
+.env-back{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  border-radius:inherit;
+  background: var(--green-base);
+}
+
+/* Frente (pocket) */
+.env-front{
+  position:absolute;
+  inset:0;
+  z-index:70;
+  pointer-events:none;
+  border-radius:inherit;
+  overflow:hidden;
+}
+.env-front::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(0,0,0,.06) 65%), var(--green-front);
+  clip-path: polygon(0 var(--front-top), 50% var(--front-tip), 100% var(--front-top), 100% 100%, 0 100%);
+}
+.env-front::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  clip-path: polygon(0 var(--front-top), 50% var(--front-tip), 100% var(--front-top), 100% 100%, 0 100%);
+  box-shadow: none !important;
+  opacity: var(--seam-opacity);
+  mix-blend-mode: overlay;
+}
+
+/* =========================
+   CARTÃO
+   ========================= */
+.env-card{
+  position:absolute;
+  left:50%;
+  top:0;
+  bottom:auto;
+
+  height: var(--card-height);
+  aspect-ratio: var(--env-card-ar, var(--card-ar));
+  width:auto;
+  max-width: var(--card-maxw);
+
+  border-radius: var(--card-radius);
+  overflow:hidden;
+
+  padding: var(--card-pad-y) var(--card-pad-x);
+  box-sizing: border-box;
+  display:grid;
+  place-items:center;
+
+  z-index:55;
+
+  opacity:0;
+  transform: translate3d(-50%, var(--card-start), 0);
+
+  --card-move-dur: var(--dur-preview);
+
+  transition:
+    opacity 260ms var(--easing),
+    transform var(--card-move-dur) var(--easing),
+    box-shadow 420ms var(--easing),
+    outline-color 220ms var(--easing);
+
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+  outline: var(--card-border-w) solid rgba(255,255,255,var(--card-border-a));
+  outline-offset: 0;
+  background: transparent;
+}
+
+.envelope.reveal-card .env-card{
+  opacity:1;
+  transform: translate3d(-50%, var(--card-preview), 0);
+  z-index:60;
+  background: rgba(0,0,0,0.1);
+}
+
+.envelope.pull-card .env-card{
+  --card-move-dur: var(--dur-card);
+  transform: translate3d(-50%, var(--card-peek), 0);
+  z-index:60;
+  background: rgba(0,0,0,0.1);
+  box-shadow: 0 5px 10px rgba(0,0,0,var(--card-shadow-a));
+}
+
+/* Tapa qualquer parte do cartão que fique abaixo do envelope */
+.envelope.pull-card::after{
+  content:"";
+  position:absolute;
+  left:-80vw;
+  right:-80vw;
+  top:100%;
+  height:120vh;
+  background: var(--surface);
+  z-index:999;
+  pointer-events:none;
+}
+
+.env-card-img{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit: var(--card-fit);
+  object-position: center;
+  background: transparent;
+  transform: translate(var(--card-img-x), var(--card-img-y));
+}
+
+/* fase exit: deixa o cartão descer sem a "tapa" */
+.envelope.exit::after{ content:none; }
+
+/* quando o cartão é destacado pelo JS */
+.env-card.detached{
+  opacity:1;
+  z-index:9999;
+  background: rgba(0,0,0,.1);
+  pointer-events:none;
+}
+
+/* envelope sai (podes animar o env-mask porque o cartão já foi destacado) */
+.envelope.exit{
+  pointer-events:none;
+}
+
+/* envelope (peças) descem e desaparecem rápido */
+.envelope.exit .env-mask,
+.envelope.exit .env-front,
+.envelope.exit .env-back,
+.envelope.exit .env-stroke,
+.envelope.exit .seams{
+  transition:
+    transform var(--dur-exit-env) var(--easing),
+    opacity 240ms var(--easing);
+  transform: translateY(var(--env-exit-y));
+  opacity:0;
+  will-change: transform, opacity;
+}
+
+/* opcional: também faz o hint desaparecer */
+.envelope.exit + .tap-hint,
+.envelope.exit .tap-hint{
+  opacity:0;
+}
+
+/* =========================
+   FLAP
+   ========================= */
+.env-flap-group{
+  position:absolute;
+  left:0; right:0; top:0;
+  height:68%;
+  z-index:110;
+  transform-origin: 50% 0%;
+  transform: perspective(1400px) rotateX(0deg);
+  transition: transform var(--dur-flap) var(--easing);
+  display:grid;
+  place-items:start center;
+  padding-top:16px;
+  pointer-events:none;
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,.08));
+}
+
+.envelope.open-flap .env-flap-group{ z-index:140; }
+.envelope.preview-card .env-flap-group{ z-index:50; }
+.envelope.pull-card .env-flap-group{ z-index:50; }
+
+.env-flap-group::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  border-top-left-radius:var(--radius);
+  border-top-right-radius:var(--radius);
+  opacity: var(--seam-opacity);
+  pointer-events:none;
+  mix-blend-mode: overlay;
+  box-shadow: inset 0 0 0 var(--seam-width) rgba(255,255,255,.18);
+  transform: translateZ(1px);
+}
+
+.env-flap-face{
+  position:absolute;
+  inset:0;
+  border-top-left-radius:var(--radius);
+  border-top-right-radius:var(--radius);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  backface-visibility:hidden;
+  box-shadow:
+    inset 0 -1px 0 rgba(0,0,0,.10),
+    inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.env-flap-front{
+  background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(0,0,0,.10)), var(--green-flap);
+  transform: translateZ(0.5px);
+}
+.env-flap-back{
+  background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(255,255,255,.08)), var(--green-flap);
+  transform: rotateX(180deg) translateZ(0.5px);
+}
+
+.envelope.open-flap .env-flap-group{
+  transform: perspective(1400px) rotateX(var(--flap-rot));
+}
+
+.flap-logo{
+  position:relative;
+  z-index:999;
+  width:110px;
+  height:auto;
+  transform: translate(var(--logo-x), var(--logo-y));
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.18));
+  pointer-events:none;
+}
+
+/* flap tem transform próprio: mantém a rotação e soma o translate */
+.envelope.exit .env-flap-group{
+  transition:
+    transform var(--dur-exit-env) var(--easing),
+    opacity 240ms var(--easing);
+  transform: translateY(var(--env-exit-y)) perspective(1400px) rotateX(var(--flap-rot));
+  opacity:0;
+  will-change: transform, opacity;
+}
+
+/* cartão desce mais lento para ficar centrado */
+.envelope.exit .env-card{
+  --card-move-dur: var(--dur-exit-card);
+  transform: translate3d(-50%, 0%, 0);
+  z-index: 500;
+}
+
+/* =========================
+   COVER / FX
+   ========================= */
+.cover{
+  position:fixed;
+  inset:0;
+  display:grid;
+  place-items:center;
+  opacity:0;
+  pointer-events:none;
+  transition: opacity 520ms var(--easing);
+  z-index:60;
   background: var(--surface);
 }
+.cover.active{ opacity:1; pointer-events:auto; }
 
-.envelope-wrap { position: relative; display: inline-block; text-align: center; }
-.tap-hint { position: absolute; left: 50%; top: -36px; transform: translateX(-50%); margin: 0; font-size: 0.95rem; color: var(--muted); z-index: 6; pointer-events: none; }
+.cover-stage{
+  position:absolute;
+  inset:0;
+  transform: scale(var(--cover-zoom-start));
+  transform-origin:center;
+  transition: transform var(--cover-zoom-dur) var(--easing);
+}
+.cover.active .cover-stage{ transform: scale(var(--cover-zoom-end)); }
 
-/* Envelope */
-.envelope { border: none; background: transparent; padding: 0; cursor: pointer; touch-action: manipulation; transition: transform var(--dur-s) var(--easing), opacity var(--dur-s) var(--easing); }
-
-/* Envelope image: never exceed viewport width and never exceed 20cm */
-.envelope-img {
-  width: min(100vw, 20cm); /* ensures it always fits the screen and respects 20cm max */
-  max-width: 20cm;
-  height: auto;
-  border-radius: calc(var(--radius) + 4px);
-  box-shadow: var(--shadow);
-  display: block;
+/* impede o cover-stage de voltar ao zoom-start quando o cover sai */
+.cover.lock-zoom .cover-stage{
+  transform: scale(var(--cover-zoom-end));
+  transition: none;
 }
 
-/* Logo */
-.envelope-logo { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(22vw, 120px); z-index: 3; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12)); }
+.fx{
+  position:absolute;
+  inset: 16px 16px var(--ui-reserve) 16px; /* ✅ igual ao flip */
+  display:grid;
+  place-items:center;
+}
 
-/* Generic image limits (20cm x 15cm) */
-.img-max {
-  max-width: 20cm;
-  max-height: 15cm;
-  width: auto;
-  height: auto;
-  object-fit: contain;
+.fx-clip{
+  position:relative;
+  width: var(--card-width);
+  aspect-ratio: var(--card-ar);
+  max-height: 100%;
+  overflow: hidden;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+
+.fx-photo-out{
+  position:absolute;
+  inset:0;
+  z-index:4;
+  pointer-events:none;
+
+  -webkit-mask-image: linear-gradient(#fff 0 0), var(--fx-mask);
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  -webkit-mask-size: 100% 100%,
+    calc(100% * var(--mask-scale-x)) calc(100% * var(--mask-scale-y));
+  -webkit-mask-position: 0 0,
+    calc(50% + var(--mask-shift-x)) calc(50% + var(--mask-shift-y));
+  -webkit-mask-composite: destination-out;
+
+  mask-image: linear-gradient(#fff 0 0), var(--fx-mask);
+  mask-repeat: no-repeat, no-repeat;
+  mask-size: 100% 100%,
+    calc(100% * var(--mask-scale-x)) calc(100% * var(--mask-scale-y));
+  mask-position: 0 0,
+    calc(50% + var(--mask-shift-x)) calc(50% + var(--mask-shift-y));
+  mask-composite: exclude;
+}
+.fx-photo-out img{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit: cover;
   object-position: center;
-  display: block;
+  transform: translate(var(--media-x), var(--media-y)) scale(var(--media-scale));
+}
+body.fx-end .fx-photo-out{ display:none; }
+
+.fx-window{
+  position:absolute;
+  z-index:10;
+  overflow:hidden;
+
+  width:  calc(100% * var(--mask-scale-x));
+  height: calc(100% * var(--mask-scale-y));
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) translate(var(--mask-shift-x), var(--mask-shift-y));
+
+  -webkit-mask-image: var(--fx-mask);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-position: 50% 50%;
+
+  mask-image: var(--fx-mask);
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  mask-position: 50% 50%;
 }
 
-/* COVER */
-.cover { position: fixed; inset: 0; display: grid; grid-template-rows: 1fr auto; background: #000; opacity: 0; pointer-events: none; transition: opacity var(--dur-m) var(--easing), transform var(--dur-l) var(--easing); z-index: 60; }
-.cover.cover-white { background: #ffffff; }
-.cover.active { opacity: 1; pointer-events: auto; }
-.cover-inner { display:flex; align-items:center; justify-content:center; height:100dvh; width:100%; background: inherit; }
-.cover-img.responsive { max-width: min(20cm, 100%); max-height: min(15cm, 100vh); width:auto; height:auto; object-fit:contain; object-position:center; pointer-events:none; }
+.fx-text-full{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+}
+.fx-text-full img{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit: cover;
+  object-position: center;
+  transform: translate3d(var(--media-x), var(--media-y), 0) scale(var(--media-scale));
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;}
 
-/* Handles (unified style) */
-.handle {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: env(safe-area-inset-bottom, 18px);
-  display: grid;
-  place-items: center;
-  gap: 8px;
-  padding: 10px 0 20px;
-  background: linear-gradient(to top, rgba(255,255,255,0.02), transparent 60%);
-  border: none;
-  cursor: pointer;
-  z-index: 120;
-  touch-action: manipulation;
+.fx-slices{
+  position:absolute;
+  inset:0;
+  z-index:20;
+  pointer-events:none;
+  --sliceH: calc((100% - (var(--slicesMinus1) * var(--slice-gap))) / var(--slices));
+}
+.fx-slice{
+  position:absolute;
+  left:0; right:0;
+  height: var(--sliceH);
+  top: calc(var(--i) * (var(--sliceH) + var(--slice-gap)));
+  overflow:hidden;
+}
+.fx-slice::after{
+  content:"";
+  position:absolute;
+  left:0; right:0;
+  bottom: calc(-1 * var(--slice-gap));
+  height: var(--slice-gap);
+  background: rgba(255,255,255,10);
+  opacity:var(--slice-seam-opacity);
+  pointer-events:none;
+}
+.fx-band{
+  position:absolute;
+  inset:0;
+  overflow: hidden;
+  transform: translateY(0%);
+  transition: transform var(--dur-cortina) var(--easing);
+  will-change: transform;
+}
+body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
+
+.fx-band img{
+  position:absolute;
+  left:0;
+  top: calc(var(--i) * -100%);
+  width:100%;
+  height: calc(100% * var(--slices));
+  display:block;
+  object-fit: cover;
+  object-position: center;
+  transform: translate(var(--slice-photo-x), var(--slice-photo-y)) scale(var(--slice-photo-scale));
 }
 
-.handle .handle-bar {
-  width: 56px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.12);
+.handle{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:max(16px, env(safe-area-inset-bottom));
+  border:none;
+  border-radius:999px;
+  padding:11px 14px;
+  cursor:pointer;
+  touch-action:manipulation;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.10);
+  background:#fff;
+  color:#0f172a;
+  transition: transform 180ms var(--easing), opacity 180ms var(--easing), filter 180ms var(--easing);
+}
+.handle:hover{ filter: brightness(1.02); }
+.handle:active{ transform: translateX(-50%) scale(0.98); }
+.handle[disabled]{ opacity:.55; cursor:default; }
+
+.handle-bar{
+  width:28px; height:6px;
+  border-radius:999px;
+  background: rgba(15,23,42,.35);
+}
+.handle-text{ font-weight:850; }
+
+/* =========================
+   FINAL (FLIP)
+   ========================= */
+.flip-section{
+  position:fixed;
+  inset:0;
+  background:var(--surface);
+  z-index:40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 520ms var(--easing);
 }
 
-.handle .handle-text {
-  margin-top: 6px;
-  font-size: 0.95rem;
-  color: #0f172a;
-  font-weight: 600;
+.flip-section.active{
+  opacity:1;
+  pointer-events:auto;
 }
 
-/* small-handle reduces to 2/3 */
-.small-handle .handle-bar { width: calc(56px * 0.66); height: calc(6px * 0.66); }
-.small-handle .handle-text { font-size: calc(0.95rem * 0.66); }
+/* ✅ padding igual ao cover (e com reserva em baixo) */
+.stage-center{
+  height:100dvh;
+  display:grid;
+  place-items:center;
+  padding: 16px 16px var(--ui-reserve) 16px;
+}
 
-/* Flip section */
-.flip-section { position: fixed; inset: 0; z-index: 50; background: var(--surface); display: none; }
-.flip-section.active { display: block; }
+.stage-frame{
+  width: var(--card-width);
+  aspect-ratio: var(--card-ar);
+  max-height: 100%;
+  overflow:hidden;
+  position:relative;
+  transform: translateZ(0);
+  will-change: transform;
+}
 
-/* 3D flip container */
-.flip-3d { width: 100%; height: 100dvh; perspective: 1400px; display:flex; align-items:center; justify-content:center; }
-.flip-3d-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform var(--dur-l) var(--easing); transform-origin: 50% 50%; }
+.flip-3d{ position:absolute; inset:0; perspective:1400px; }
 
-/* faces */
-.flip-face { position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; backface-visibility: hidden; background: var(--surface); }
-.flip-front { transform: rotateY(0deg); }
-.flip-back { transform: rotateY(180deg); }
+.flip-3d-inner{
+  width:100%;
+  height:100%;
+  position:relative;
+  transform-style:preserve-3d;
+  transition: transform 780ms var(--easing);
+}
 
-/* image sizing inside faces */
-.text-inner { display:flex; align-items:center; justify-content:center; height:100dvh; width:100%; }
-.texto-img.responsive { max-width: min(20cm, 100%); max-height: min(15cm, 100vh); width:auto; height:auto; object-fit:contain; }
+.flip-face{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
 
-/* Accessibility focus */
-button:focus { outline: 3px solid rgba(34,197,94,0.18); outline-offset: 4px; }
+.flip-front{ transform: rotateY(0deg); }
+.flip-back{ transform: rotateY(180.001deg); }
+.flip-3d-inner.is-flipped{ transform: rotateY(-180deg); }
 
-/* sliding cover state */
-.app.sliding-cover .cover { transform: translateY(100%); }
+.text-inner{
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+}
 
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .cover, .flip-3d-inner, .envelope { transition: none !important; }
+
+.texto-img{
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  object-position: center;
+  display:block;
+  transform: translate3d(var(--media-x), var(--media-y), 0) scale(var(--media-scale));
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;}
+
+.texto2-link{ display:block; width:100%; height:100%; }
+
+/* ✅ Botões e hint “fora” do flip (sem 3D) e no fundo do ecrã */
+.back-actions{
+  position:fixed;
+  left:50%;
+  bottom:max(16px, env(safe-area-inset-bottom));
+  transform:translateX(-50%) translateY(10px);
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+  z-index:200;
+  opacity:0;
+  pointer-events:none;
+  transition: opacity 240ms var(--easing), transform 240ms var(--easing);
+}
+
+/* Só aparecem quando está virado */
+#flipStage.is-flipped ~ .back-actions{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+  pointer-events:auto;
+}
+
+.pill{
+  border:0;
+  border-radius:999px;
+  padding:10px 12px;
+  font-weight:850;
+  cursor:pointer;
+  background: rgba(15,23,42,.88);
+  color:#fff;
+  box-shadow: 0 10px 24px rgba(0,0,0,.16);
+  text-decoration:none;
+  transition: transform 160ms var(--easing), filter 160ms var(--easing);
+}
+.pill:hover{ filter: brightness(1.03); }
+.pill:active{ transform: scale(0.98); }
+
+.pill--ghost{
+  background: rgba(255,255,255,.92);
+  color: rgba(15,23,42,.92);
+  border: 1px solid rgba(15,23,42,.10);
+}
+
+.tap-to-flip-hint{
+  position:fixed;
+  left:50%;
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 54px); /* ✅ sempre visível, acima dos botões */
+  transform:translateX(-50%);
+  font-size:.9rem;
+  color:rgba(100,116,139,.9);
+  background: rgba(255,255,255,.76);
+  padding:8px 10px;
+  border-radius:999px;
+  backdrop-filter: blur(8px);
+  pointer-events:none;
+  opacity:1;
+  z-index:200;
+  transition: opacity 240ms var(--easing), transform 240ms var(--easing);
+}
+
+
+@media (prefers-reduced-motion: reduce){
+  .env-flap-group, .env-card, .cover, .cover-stage, .fx-band, .flip-3d-inner{ transition:none !important; }
 }
