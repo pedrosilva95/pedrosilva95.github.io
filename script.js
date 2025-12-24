@@ -27,18 +27,6 @@
     return px || 0;
   };
 
-  // Centro do viewport (mais estável em mobile/iOS com barras de navegação)
-  const viewportCenter = () => {
-    const vv = window.visualViewport;
-    if (vv) {
-      return {
-        cx: vv.width / 2 + vv.offsetLeft,
-        cy: vv.height / 2 + vv.offsetTop,
-      };
-    }
-    return { cx: window.innerWidth / 2, cy: window.innerHeight / 2 };
-  };
-
   function setMaskFromCSS() {
     const root = document.documentElement;
     const cs = getComputedStyle(root);
@@ -51,15 +39,15 @@
 
     const vbW = 100;
     const vbH = vbW / ratio;
-    const cardWpx = clipRect.width || 300;
-    const cardHpx = clipRect.height || (300 / ratio);
 
-    // ✅ Notches/máscara: mantém o visual “perfeito” do tablet
-    // (usa --notch-w/--notch-h; podem ser cm, px, calc(), clamp(), etc.)
-    const notchWStr = cs.getPropertyValue("--notch-w").trim() || "66px";
-    const notchHStr = cs.getPropertyValue("--notch-h").trim() || "25px";
+    const notchWStr = cs.getPropertyValue("--notch-w").trim();
+    const notchHStr = cs.getPropertyValue("--notch-h").trim();
+
     const notchWpx = cssLengthToPx(notchWStr);
     const notchHpx = cssLengthToPx(notchHStr);
+
+    const cardWpx = clipRect.width || 300;
+    const cardHpx = clipRect.height || (300 / ratio);
 
     const rx = (notchWpx / cardWpx) * vbW * 0.5;
     const ry = (notchHpx / cardHpx) * vbH * 0.5;
@@ -176,6 +164,7 @@
     };
 
     const btnCalendar = $("btnCalendar");
+    const btnSite = $("btnSite");
     const backLink = $("backLink");
 
     if (backLink) backLink.href = EVENT.backLink;
@@ -244,6 +233,14 @@
         e.preventDefault();
         openGoogleCalendar();
         downloadICS();
+      });
+    }
+
+    // ✅ Botão "Site": abre o mesmo link que antes estava na imagem (texto2.png)
+    if (btnSite) {
+      btnSite.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.open(EVENT.backLink, "_blank", "noopener,noreferrer");
       });
     }
   }
@@ -404,11 +401,11 @@
           cover.hidden = true; // só aqui escondes de vez
         };
 
-        cover.hidden = false; // garante que a transição de opacidade acontece
-        cover.classList.add("lock-zoom"); // ✅ trava o scale no fim
-        cover.addEventListener("transitionend", onEnd, { passive: true });
-        void cover.offsetWidth; // força layout antes de remover a classe
-        cover.classList.remove("active"); // fade-out sem “mini zoom”
+        cover.addEventListener("transitionend", onEnd);
+        cover.hidden = true;
+        cover.classList.add("lock-zoom");     // ✅ trava o scale no fim
+        void cover.offsetWidth;              // (opcional) força layout
+        cover.classList.remove("active");    // fade-out sem “mini zoom”
 
         
       }
@@ -495,7 +492,8 @@
             card.style.setProperty("--card-move-dur", `${EXIT_CARD_MS}ms`);
 
             // 4) anima até ao centro do ecrã
-            const { cx, cy } = viewportCenter();
+            const cx = window.innerWidth / 2;
+            const cy = window.innerHeight / 2;
             const dx = cx - (r.left + r.width / 2);
             const dy = cy - (r.top + r.height / 2);
 
@@ -532,26 +530,15 @@
       });
     }
 
-    // ✅ Recalcular máscara/slices em alterações reais do viewport (mobile/iOS)
-    let layoutRAF = 0;
-    const requestLayout = () => {
-      if (layoutRAF) return;
-      layoutRAF = requestAnimationFrame(() => {
-        layoutRAF = 0;
+    window.addEventListener(
+      "resize",
+      () => {
         buildSlices(fxSlices);
         setMaskFromCSS();
         if (envelopeEl) applyAutoPadding(envelopeEl);
-      });
-    };
-
-    window.addEventListener("resize", requestLayout, { passive: true });
-    window.addEventListener("orientationchange", requestLayout, { passive: true });
-
-    // iOS/Safari: a barra do browser muda o viewport sem disparar resize
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", requestLayout, { passive: true });
-      window.visualViewport.addEventListener("scroll", requestLayout, { passive: true });
-    }
+      },
+      { passive: true }
+    );
 
     wireCalendarAndMaps();
 
