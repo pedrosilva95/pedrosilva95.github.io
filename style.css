@@ -662,7 +662,7 @@ body.fx-end .fx-photo-out{ display:none; }
   left:0; right:0;
   bottom: calc(-1 * var(--slice-gap));
   height: var(--slice-gap);
-  background: rgba(255,255,255,10);
+  background: rgba(255,255,255,.10);
   opacity:var(--slice-seam-opacity);
   pointer-events:none;
 }

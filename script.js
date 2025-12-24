@@ -218,8 +218,9 @@
     const EVENT = {
       title: "Casamento Débora & Pedro",
       location: "Igreja Paroquial Vilar de Mouros",
-      startISO: "2026-07-31T12:00:00",
-      endISO: "2026-08-01T03:00:00",
+      startISO: "2026-07-31T12:00:00", // horário LOCAL do evento
+      endISO: "2026-08-01T03:00:00",   // horário LOCAL do evento
+      timeZone: "Europe/Lisbon",
       mapsUrl: "https://maps.google.com/?q=Igreja+Paroquial+Vilar+de+Mouros",
       backLink: "https://we.are.planning.wedding/debora-e-pedro",
     };
@@ -227,25 +228,102 @@
     const btnCalendar = $("btnCalendar");
     const btnSite = $("btnSite");
 
-    const toICSDate = (iso) => {
-      const d = new Date(iso);
-      const pad = (n) => String(n).padStart(2, "0");
-      return (
-        d.getUTCFullYear() +
-        pad(d.getUTCMonth() + 1) +
-        pad(d.getUTCDate()) +
-        "T" +
-        pad(d.getUTCHours()) +
-        pad(d.getUTCMinutes()) +
-        pad(d.getUTCSeconds()) +
-        "Z"
+    // --- Platform detection (robusto p/ iOS + iPadOS “MacIntel”) ---
+    const detectPlatform = () => {
+      const ua = navigator.userAgent || "";
+      const platform = navigator.userAgentData?.platform || navigator.platform || "";
+      const maxTouch = navigator.maxTouchPoints || 0;
+
+      const isIOS =
+        /iPad|iPhone|iPod/i.test(ua) ||
+        (platform === "MacIntel" && maxTouch > 1); // iPadOS 13+
+
+      const isAndroid = /Android/i.test(ua);
+      const isMobile = isIOS || isAndroid || /Mobi/i.test(ua);
+
+      return { isIOS, isAndroid, isMobile };
+    };
+
+    // --- Helpers timezone-safe: interpretar hora em Europe/Lisbon ---
+    const dtfForTZ = (timeZone) =>
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone,
+        hour12: false,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+
+    const partsToObj = (parts) => {
+      const out = {};
+      for (const p of parts) if (p.type !== "literal") out[p.type] = p.value;
+      return out;
+    };
+
+    // Converte "YYYY-MM-DDTHH:mm:ss" assumido como hora local do EVENT.timeZone
+    // para um Date em UTC (mesmo que o utilizador esteja noutra timezone).
+    const zonedTimeToUtc = (isoLocal, timeZone) => {
+      const [datePart, timePart = "00:00:00"] = isoLocal.split("T");
+      const [y, m, d] = datePart.split("-").map(Number);
+      const [hh, mm, ss = 0] = timePart.split(":").map(Number);
+
+      // chute inicial: tratar como UTC
+      let utc = new Date(Date.UTC(y, m - 1, d, hh, mm, ss));
+      const fmt = dtfForTZ(timeZone);
+
+      // 1ª correção
+      const p1 = partsToObj(fmt.formatToParts(utc));
+      const asIfUtc1 = Date.UTC(
+        Number(p1.year),
+        Number(p1.month) - 1,
+        Number(p1.day),
+        Number(p1.hour),
+        Number(p1.minute),
+        Number(p1.second)
       );
+      const desiredAsIfUtc = Date.UTC(y, m - 1, d, hh, mm, ss);
+      utc = new Date(utc.getTime() + (desiredAsIfUtc - asIfUtc1));
+
+      // 2ª correção (ajuda em transições DST)
+      const p2 = partsToObj(fmt.formatToParts(utc));
+      const asIfUtc2 = Date.UTC(
+        Number(p2.year),
+        Number(p2.month) - 1,
+        Number(p2.day),
+        Number(p2.hour),
+        Number(p2.minute),
+        Number(p2.second)
+      );
+      const diff2 = desiredAsIfUtc - asIfUtc2;
+      if (diff2) utc = new Date(utc.getTime() + diff2);
+
+      return utc;
+    };
+
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const toICSDateUTC = (dateUTC) =>
+      dateUTC.getUTCFullYear() +
+      pad2(dateUTC.getUTCMonth() + 1) +
+      pad2(dateUTC.getUTCDate()) +
+      "T" +
+      pad2(dateUTC.getUTCHours()) +
+      pad2(dateUTC.getUTCMinutes()) +
+      pad2(dateUTC.getUTCSeconds()) +
+      "Z";
+
+    const getStartEndUTC = () => {
+      const startUtc = zonedTimeToUtc(EVENT.startISO, EVENT.timeZone);
+      const endUtc = zonedTimeToUtc(EVENT.endISO, EVENT.timeZone);
+      return { startUtc, endUtc };
     };
 
     const makeICS = () => {
-      const dtStart = toICSDate(EVENT.startISO);
-      const dtEnd = toICSDate(EVENT.endISO);
+      const { startUtc, endUtc } = getStartEndUTC();
       const uid = `invite-${Date.now()}@convite`;
+
       return [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -254,9 +332,9 @@
         "METHOD:PUBLISH",
         "BEGIN:VEVENT",
         `UID:${uid}`,
-        `DTSTAMP:${toICSDate(new Date().toISOString())}`,
-        `DTSTART:${dtStart}`,
-        `DTEND:${dtEnd}`,
+        `DTSTAMP:${toICSDateUTC(new Date())}`,
+        `DTSTART:${toICSDateUTC(startUtc)}`,
+        `DTEND:${toICSDateUTC(endUtc)}`,
         `SUMMARY:${EVENT.title}`,
         `LOCATION:${EVENT.location}`,
         "END:VEVENT",
@@ -265,14 +343,15 @@
     };
 
     const openGoogleCalendar = () => {
-      const start = toICSDate(EVENT.startISO);
-      const end = toICSDate(EVENT.endISO);
+      const { startUtc, endUtc } = getStartEndUTC();
       const url = new URL("https://calendar.google.com/calendar/render");
       url.searchParams.set("action", "TEMPLATE");
       url.searchParams.set("text", EVENT.title);
       url.searchParams.set("location", EVENT.location);
-      url.searchParams.set("dates", `${start}/${end}`);
-      window.open(url.toString(), "_blank", "noopener,noreferrer");
+      url.searchParams.set("dates", `${toICSDateUTC(startUtc)}/${toICSDateUTC(endUtc)}`);
+
+      const w = window.open(url.toString(), "_blank", "noopener,noreferrer");
+      if (!w) window.location.href = url.toString(); // fallback se pop-up for bloqueado
     };
 
     const downloadICS = () => {
@@ -289,8 +368,13 @@
     if (btnCalendar) {
       btnCalendar.addEventListener("click", (e) => {
         e.preventDefault();
-        openGoogleCalendar();
-        downloadICS();
+        const p = detectPlatform();
+
+        // ✅ Fluxo por plataforma:
+        // iOS/iPadOS: .ics (nativo e mais “suave”)
+        // Android/Desktop: Google Calendar (mais direto)
+        if (p.isIOS) downloadICS();
+        else openGoogleCalendar();
       });
     }
 
@@ -301,6 +385,7 @@
       });
     }
   }
+
 
   document.addEventListener("DOMContentLoaded", () => {
     // inicializa viewport vars cedo (evita layout “errado” no primeiro paint em mobile)
