@@ -27,6 +27,18 @@
     return px || 0;
   };
 
+  // Centro do viewport (mais estável em mobile/iOS com barras de navegação)
+  const viewportCenter = () => {
+    const vv = window.visualViewport;
+    if (vv) {
+      return {
+        cx: vv.width / 2 + vv.offsetLeft,
+        cy: vv.height / 2 + vv.offsetTop,
+      };
+    }
+    return { cx: window.innerWidth / 2, cy: window.innerHeight / 2 };
+  };
+
   function setMaskFromCSS() {
     const root = document.documentElement;
     const cs = getComputedStyle(root);
@@ -39,15 +51,15 @@
 
     const vbW = 100;
     const vbH = vbW / ratio;
-
-    const notchWStr = cs.getPropertyValue("--notch-w").trim();
-    const notchHStr = cs.getPropertyValue("--notch-h").trim();
-
-    const notchWpx = cssLengthToPx(notchWStr);
-    const notchHpx = cssLengthToPx(notchHStr);
-
     const cardWpx = clipRect.width || 300;
     const cardHpx = clipRect.height || (300 / ratio);
+
+    // ✅ Notches/máscara: mantém o visual “perfeito” do tablet
+    // (usa --notch-w/--notch-h; podem ser cm, px, calc(), clamp(), etc.)
+    const notchWStr = cs.getPropertyValue("--notch-w").trim() || "66px";
+    const notchHStr = cs.getPropertyValue("--notch-h").trim() || "25px";
+    const notchWpx = cssLengthToPx(notchWStr);
+    const notchHpx = cssLengthToPx(notchHStr);
 
     const rx = (notchWpx / cardWpx) * vbW * 0.5;
     const ry = (notchHpx / cardHpx) * vbH * 0.5;
@@ -76,12 +88,6 @@
 </svg>`;
 
     root.style.setProperty("--fx-mask", `url("data:image/svg+xml,${encodeURIComponent(maskSvg)}")`);
-  
-    if (window.visualViewport) {
-      visualViewport.addEventListener("resize", setMaskFromCSS, { passive: true });
-      visualViewport.addEventListener("scroll", setMaskFromCSS, { passive: true });
-}
-
   }
 
   function buildSlices(fxSlicesEl) {
@@ -114,18 +120,6 @@
       fxSlicesEl.appendChild(slice);
     }
   }
-
-  function viewportCenter() {
-    const vv = window.visualViewport;
-    if (vv) {
-      return {
-        cx: vv.width / 2 + vv.offsetLeft,
-        cy: vv.height / 2 + vv.offsetTop,
-      };
-    }
-    return { cx: window.innerWidth / 2, cy: window.innerHeight / 2 };
-  }
-
 
   /**
    * Padding automático (mais estável):
@@ -182,7 +176,6 @@
     };
 
     const btnCalendar = $("btnCalendar");
-    const btnSite = $("btnSite");
     const backLink = $("backLink");
 
     if (backLink) backLink.href = EVENT.backLink;
@@ -251,14 +244,6 @@
         e.preventDefault();
         openGoogleCalendar();
         downloadICS();
-      });
-    }
-
-    // ✅ Botão "Site": abre o mesmo link que antes estava na imagem (texto2.png)
-    if (btnSite) {
-      btnSite.addEventListener("click", (e) => {
-        e.preventDefault();
-        window.open(EVENT.backLink, "_blank", "noopener,noreferrer");
       });
     }
   }
@@ -413,26 +398,20 @@
 
       // 2) Agora sim: fade-out do cover (sem cortar com hidden)
       if (cover) {
-        const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-
         const onEnd = (e) => {
-          if (!reduceMotion && e.propertyName !== "opacity") return;
+          if (e.propertyName !== "opacity") return;
           cover.removeEventListener("transitionend", onEnd);
-          cover.hidden = true;
+          cover.hidden = true; // só aqui escondes de vez
         };
 
-        cover.hidden = false;            // garante que existe durante o fade
-        cover.classList.add("lock-zoom"); // trava o scale no fim
+        cover.hidden = false; // garante que a transição de opacidade acontece
+        cover.classList.add("lock-zoom"); // ✅ trava o scale no fim
         cover.addEventListener("transitionend", onEnd, { passive: true });
+        void cover.offsetWidth; // força layout antes de remover a classe
+        cover.classList.remove("active"); // fade-out sem “mini zoom”
 
-        // inicia o fade-out
-        void cover.offsetWidth;
-        cover.classList.remove("active");
-
-        // fallback se não houver transição
-        if (reduceMotion) onEnd({ propertyName: "opacity" });
+        
       }
-
     }
 
 
@@ -553,15 +532,26 @@
       });
     }
 
-    window.addEventListener(
-      "resize",
-      () => {
+    // ✅ Recalcular máscara/slices em alterações reais do viewport (mobile/iOS)
+    let layoutRAF = 0;
+    const requestLayout = () => {
+      if (layoutRAF) return;
+      layoutRAF = requestAnimationFrame(() => {
+        layoutRAF = 0;
         buildSlices(fxSlices);
         setMaskFromCSS();
         if (envelopeEl) applyAutoPadding(envelopeEl);
-      },
-      { passive: true }
-    );
+      });
+    };
+
+    window.addEventListener("resize", requestLayout, { passive: true });
+    window.addEventListener("orientationchange", requestLayout, { passive: true });
+
+    // iOS/Safari: a barra do browser muda o viewport sem disparar resize
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", requestLayout, { passive: true });
+      window.visualViewport.addEventListener("scroll", requestLayout, { passive: true });
+    }
 
     wireCalendarAndMaps();
 
