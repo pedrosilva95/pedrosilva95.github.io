@@ -130,7 +130,7 @@ html, body{
   --card-pad-y: 0px;
 
   /* FX */
-  --fx-delay: 2000ms;
+  --fx-delay: 100ms;
   --dur-cortina: 3200ms;
   --slices: 5;
   --slice-gap: 0px;
