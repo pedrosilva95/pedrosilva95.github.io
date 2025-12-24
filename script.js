@@ -231,18 +231,20 @@
     // --- Platform detection (robusto p/ iOS + iPadOS “MacIntel”) ---
     const detectPlatform = () => {
       const ua = navigator.userAgent || "";
-      const platform = navigator.userAgentData?.platform || navigator.platform || "";
+      const platform = navigator.platform || "";
       const maxTouch = navigator.maxTouchPoints || 0;
 
+      // iOS robusto (inclui Safari “desktop mode”)
       const isIOS =
-        /iPad|iPhone|iPod/i.test(ua) ||
+        /iP(hone|od|ad)/i.test(ua) ||
+        /iP(hone|od|ad)/i.test(platform) ||
         (platform === "MacIntel" && maxTouch > 1); // iPadOS 13+
 
       const isAndroid = /Android/i.test(ua);
-      const isMobile = isIOS || isAndroid || /Mobi/i.test(ua);
 
-      return { isIOS, isAndroid, isMobile };
+      return { isIOS, isAndroid };
     };
+
 
     // --- Helpers timezone-safe: interpretar hora em Europe/Lisbon ---
     const dtfForTZ = (timeZone) =>
@@ -368,15 +370,20 @@
     if (btnCalendar) {
       btnCalendar.addEventListener("click", (e) => {
         e.preventDefault();
-        const p = detectPlatform();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
 
-        // ✅ Fluxo por plataforma:
-        // iOS/iPadOS: .ics (nativo e mais “suave”)
-        // Android/Desktop: Google Calendar (mais direto)
-        if (p.isIOS) downloadICS();
-        else openGoogleCalendar();
+        const { isIOS } = detectPlatform();
+
+        if (isIOS) {
+          downloadICS();   // ✅ iOS: abre logo o convite de calendário
+          return;
+        }
+
+        openGoogleCalendar(); // ✅ Android/Desktop: Google Calendar
       });
     }
+
 
     if (btnSite) {
       btnSite.addEventListener("click", (e) => {
