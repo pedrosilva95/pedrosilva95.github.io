@@ -76,6 +76,12 @@
 </svg>`;
 
     root.style.setProperty("--fx-mask", `url("data:image/svg+xml,${encodeURIComponent(maskSvg)}")`);
+  
+    if (window.visualViewport) {
+      visualViewport.addEventListener("resize", setMaskFromCSS, { passive: true });
+      visualViewport.addEventListener("scroll", setMaskFromCSS, { passive: true });
+}
+
   }
 
   function buildSlices(fxSlicesEl) {
