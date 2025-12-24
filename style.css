@@ -823,3 +823,109 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
 @media (prefers-reduced-motion: reduce){
   .env-flap-group, .env-card, .cover, .cover-stage, .fx-band, .flip-3d-inner{ transition:none !important; }
 }
+
+
+/* =========================
+   MOBILE RESPONSIVE OVERRIDES
+   (colar no fim do style.css)
+   ========================= */
+
+/* Melhor fallback p/ browsers antigos (antes do dvh) */
+.hero,
+.stage-center { height: 100vh; }
+@supports (height: 100dvh){
+  .hero,
+  .stage-center { height: 100dvh; }
+}
+
+/* 1) Phones pequenos (até ~480px) */
+@media (max-width: 480px){
+  :root{
+    /* mais “cheio” no ecrã */
+    --card-width: min(92vw, 420px);
+
+    /* reserva inferior mais curta em mobile */
+    --ui-reserve: calc(96px + env(safe-area-inset-bottom));
+
+    /* suaviza um pouco volumes */
+    --radius: 16px;
+    --shadow: 0 14px 34px rgba(15,23,42,.16);
+
+    /* notch em unidades responsivas (cm em mobile varia muito) */
+    --notch-w: clamp(20px, 7vw, 30px);
+    --notch-h: clamp(8px, 2.7vw, 12px);
+
+    /* pequenas correções que costumam precisar em phones */
+    --mask-shift-y: clamp(6px, 2.2vw, 9px);
+
+    /* logo do flap: menos “empurrado” */
+    --logo-x: clamp(-10px, -3vw, -15px);
+    --logo-y: clamp(44px, 12vh, 65px);
+  }
+
+  .hero{ padding: 0 12px; }
+  .envelope{ width: min(92vw, 380px); }
+
+  .tap-hint{
+    top: -32px;
+    font-size: .9rem;
+  }
+
+  .handle{
+    padding: 10px 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .stage-center{
+    padding: 12px 12px var(--ui-reserve) 12px;
+  }
+  .fx{
+    inset: 12px 12px var(--ui-reserve) 12px;
+  }
+
+  .back-actions{
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .tap-to-flip-hint{
+    bottom: max(12px, env(safe-area-inset-bottom));
+    font-size: .85rem;
+  }
+}
+
+/* 2) Phones grandes / phablets (481–768px) */
+@media (min-width: 481px) and (max-width: 768px){
+  :root{
+    --card-width: min(86vw, 520px);
+    --ui-reserve: calc(104px + env(safe-area-inset-bottom));
+
+    --notch-w: clamp(22px, 5.8vw, 34px);
+    --notch-h: clamp(9px, 2.2vw, 13px);
+  }
+
+  .envelope{ width: min(86vw, 420px); }
+}
+
+/* 3) Landscape em telemóveis (altura baixa) — aqui é onde costuma “apertar” */
+@media (orientation: landscape) and (max-height: 520px){
+  :root{
+    --ui-reserve: calc(72px + env(safe-area-inset-bottom));
+
+    /* limita pelo height disponível (ratio aproximado 3/4.4 ≈ 0.6818) */
+    --card-width: min(70vw, calc((100dvh - var(--ui-reserve) - 24px) * 0.6818));
+
+    --notch-w: clamp(18px, 4.6vw, 28px);
+    --notch-h: clamp(7px, 1.9vw, 11px);
+
+    --logo-y: clamp(26px, 8vh, 52px);
+  }
+
+  .hero{ padding: 0 10px; }
+  .stage-center{ padding: 10px 10px var(--ui-reserve) 10px; }
+  .fx{ inset: 10px 10px var(--ui-reserve) 10px; }
+
+  .handle,
+  .back-actions,
+  .tap-to-flip-hint{
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+}

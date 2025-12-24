@@ -109,6 +109,18 @@
     }
   }
 
+  function viewportCenter() {
+    const vv = window.visualViewport;
+    if (vv) {
+      return {
+        cx: vv.width / 2 + vv.offsetLeft,
+        cy: vv.height / 2 + vv.offsetTop,
+      };
+    }
+    return { cx: window.innerWidth / 2, cy: window.innerHeight / 2 };
+  }
+
+
   /**
    * Padding automático (mais estável):
    * - tenta igualar a “margem visual” total (padding + letterbox do contain)
@@ -395,20 +407,26 @@
 
       // 2) Agora sim: fade-out do cover (sem cortar com hidden)
       if (cover) {
+        const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
         const onEnd = (e) => {
-          if (e.propertyName !== "opacity") return;
+          if (!reduceMotion && e.propertyName !== "opacity") return;
           cover.removeEventListener("transitionend", onEnd);
-          cover.hidden = true; // só aqui escondes de vez
+          cover.hidden = true;
         };
 
-        cover.addEventListener("transitionend", onEnd);
-        cover.hidden = true;
-        cover.classList.add("lock-zoom");     // ✅ trava o scale no fim
-        void cover.offsetWidth;              // (opcional) força layout
-        cover.classList.remove("active");    // fade-out sem “mini zoom”
+        cover.hidden = false;            // garante que existe durante o fade
+        cover.classList.add("lock-zoom"); // trava o scale no fim
+        cover.addEventListener("transitionend", onEnd, { passive: true });
 
-        
+        // inicia o fade-out
+        void cover.offsetWidth;
+        cover.classList.remove("active");
+
+        // fallback se não houver transição
+        if (reduceMotion) onEnd({ propertyName: "opacity" });
       }
+
     }
 
 
@@ -492,8 +510,7 @@
             card.style.setProperty("--card-move-dur", `${EXIT_CARD_MS}ms`);
 
             // 4) anima até ao centro do ecrã
-            const cx = window.innerWidth / 2;
-            const cy = window.innerHeight / 2;
+            const { cx, cy } = viewportCenter();
             const dx = cx - (r.left + r.width / 2);
             const dy = cy - (r.top + r.height / 2);
 
