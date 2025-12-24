@@ -776,9 +776,9 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
   -webkit-backface-visibility:hidden;
 }
 
-.flip-front{ transform: rotateY(0deg); }
-.flip-back{ transform: rotateY(180.001deg); }
-.flip-3d-inner.is-flipped{ transform: rotateY(-180deg); }
+.flip-front { transform: rotateY(0deg) translateZ(0.1px); }
+.flip-back  { transform: rotateY(180deg) translateZ(0.1px); }
+.flip-3d-inner.is-flipped { transform: rotateY(180deg); }
 
 .text-inner{
   width:100%;
@@ -866,4 +866,37 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
 
 @media (prefers-reduced-motion: reduce){
   .env-flap-group, .env-card, .cover, .cover-stage, .fx-band, .flip-3d-inner{ transition:none !important; }
+}
+
+/* Firefox: evita desaparecer o flap ao rodar (filter + 3D + clip-path) */
+@supports (-moz-appearance: none) {
+
+  :root { --flap-rot: -165deg; }
+
+  .env-flap-group { 
+    filter: none !important; 
+    backface-visibility: hidden;
+    transform: translateZ(0.1px) rotateX(0deg); /* dá “profundidade” para o Gecko */
+    will-change: transform;
+  }
+
+  .flap-logo { filter: none !important; }
+
+  /* sombra alternativa sem filter (não “rasteriza” a layer em 3D) */
+  .env-flap-group::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    border-top-left-radius:var(--radius);
+    border-top-right-radius:var(--radius);
+    box-shadow: 0 8px 14px rgba(0,0,0,.08);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* garante que as faces ficam acima do ::before */
+  .env-flap-face { z-index: 1; }
+  .env-flap-group::after { z-index: 2; }
+  .flap-logo { z-index: 3; }
 }
