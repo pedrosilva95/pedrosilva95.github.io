@@ -1,6 +1,71 @@
 (() => {
   const $ = (id) => document.getElementById(id);
 
+  /* =========================
+     VIEWPORT / SCALE SYSTEM
+     - --app-h: altura estável (evita "saltos" quando a barra do browser muda)
+     - --dvh/--dvw: viewport atual (pode variar)
+     - --scale: min(vw/designW, appH/designH) com clamp
+     ========================= */
+  const DESIGN_W = 390;
+  const DESIGN_H = 844;
+  const SCALE_MIN = 0.85;
+  const SCALE_MAX = 1.25;
+
+  let stableH = null;   // “small viewport height” (baseline)
+  let lastW = null;
+  let rafVp = 0;
+
+  const getViewport = () => {
+    const vv = window.visualViewport;
+    if (vv) {
+      return {
+        width: vv.width,
+        height: vv.height,
+        offsetLeft: vv.offsetLeft || 0,
+        offsetTop: vv.offsetTop || 0,
+      };
+    }
+    return {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      offsetLeft: 0,
+      offsetTop: 0,
+    };
+  };
+
+  function updateViewportVars({ forceReset = false } = {}) {
+    const root = document.documentElement;
+    const vp = getViewport();
+
+    const w = Math.round(vp.width);
+    const h = Math.round(vp.height);
+
+    // reset “baseline” em mudanças grandes de largura/orientação
+    const widthChanged = lastW == null ? true : Math.abs(w - lastW) > 40;
+    if (stableH == null || forceReset || widthChanged) stableH = h;
+    else stableH = Math.min(stableH, h);
+
+    lastW = w;
+
+    root.style.setProperty("--dvw", `${w}px`);
+    root.style.setProperty("--dvh", `${h}px`);
+    root.style.setProperty("--app-h", `${stableH}px`);
+    root.style.setProperty("--dpr", String(window.devicePixelRatio || 1));
+
+    const s = Math.min(w / DESIGN_W, stableH / DESIGN_H);
+    const clamped = Math.max(SCALE_MIN, Math.min(s, SCALE_MAX));
+    root.style.setProperty("--scale", clamped.toFixed(4));
+  }
+
+  function scheduleViewportUpdate(opts) {
+    if (rafVp) cancelAnimationFrame(rafVp);
+    rafVp = requestAnimationFrame(() => {
+      rafVp = 0;
+      updateViewportVars(opts);
+    });
+  }
+
   const cssTimeToMs = (v) => {
     v = String(v || "").trim();
     if (!v) return 0;
@@ -13,18 +78,6 @@
     const parts = String(str).split("/").map((s) => parseFloat(s.trim()));
     if (parts.length !== 2 || !isFinite(parts[0]) || !isFinite(parts[1]) || parts[1] === 0) return null;
     return parts[0] / parts[1];
-  };
-
-  const cssLengthToPx = (value) => {
-    const el = document.createElement("div");
-    el.style.position = "fixed";
-    el.style.left = "-9999px";
-    el.style.top = "-9999px";
-    el.style.width = value;
-    document.body.appendChild(el);
-    const px = el.getBoundingClientRect().width;
-    el.remove();
-    return px || 0;
   };
 
   function setMaskFromCSS() {
@@ -40,14 +93,15 @@
     const vbW = 100;
     const vbH = vbW / ratio;
 
-    const notchWStr = cs.getPropertyValue("--notch-w").trim();
-    const notchHStr = cs.getPropertyValue("--notch-h").trim();
-
-    const notchWpx = cssLengthToPx(notchWStr);
-    const notchHpx = cssLengthToPx(notchHStr);
-
     const cardWpx = clipRect.width || 300;
     const cardHpx = clipRect.height || (300 / ratio);
+
+    // ✅ notch por rácio (estável) em vez de cm/px fixos
+    const notchWr = parseFloat(cs.getPropertyValue("--notch-w-r").trim()) || 0.195;
+    const notchHr = parseFloat(cs.getPropertyValue("--notch-h-r").trim()) || 0.05;
+
+    const notchWpx = cardWpx * notchWr;
+    const notchHpx = cardHpx * notchHr;
 
     const rx = (notchWpx / cardWpx) * vbW * 0.5;
     const ry = (notchHpx / cardHpx) * vbH * 0.5;
@@ -109,22 +163,18 @@
     }
   }
 
-  /**
-   * Padding automático (mais estável):
-   * - tenta igualar a “margem visual” total (padding + letterbox do contain)
-   * - impõe limites para nunca esmagar a imagem
-   */
   function computeAutoPad(cardW, cardH) {
+    const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scale")) || 1;
+
     const px = 0.005 * cardW;
     const py = 0.005 * cardH;
 
-    const minInner = 48;
+    const minInner = 48 * scale;
     const capX = Math.max(0, (cardW - minInner) / 2);
     const capY = Math.max(0, (cardH - minInner) / 2);
 
     return { px: Math.min(px, capX), py: Math.min(py, capY) };
   }
-
 
   function applyAutoPadding(envelopeEl) {
     const card = envelopeEl?.querySelector?.(".env-card");
@@ -149,7 +199,6 @@
     if (img.complete) doCalc();
     else img.addEventListener("load", doCalc, { once: true });
 
-    // re-calc após layout estabilizar
     requestAnimationFrame(() => requestAnimationFrame(doCalc));
   }
 
@@ -165,9 +214,6 @@
 
     const btnCalendar = $("btnCalendar");
     const btnSite = $("btnSite");
-    const backLink = $("backLink");
-
-    if (backLink) backLink.href = EVENT.backLink;
 
     const toICSDate = (iso) => {
       const d = new Date(iso);
@@ -236,7 +282,6 @@
       });
     }
 
-    // ✅ Botão "Site": abre o mesmo link que antes estava na imagem (texto2.png)
     if (btnSite) {
       btnSite.addEventListener("click", (e) => {
         e.preventDefault();
@@ -246,6 +291,19 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    // inicializa viewport vars cedo (evita layout “errado” no primeiro paint em mobile)
+    updateViewportVars({ forceReset: true });
+
+    // mantém atualizado (inclui iOS/Android antigos com fallback)
+    window.addEventListener("resize", () => scheduleViewportUpdate(), { passive: true });
+    window.addEventListener("orientationchange", () => scheduleViewportUpdate({ forceReset: true }), { passive: true });
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", () => scheduleViewportUpdate(), { passive: true });
+      // útil quando a barra do browser altera a área visível
+      window.visualViewport.addEventListener("scroll", () => scheduleViewportUpdate(), { passive: true });
+    }
+
     const hero = $("hero");
     const tapHint = $("tapHint");
     const envelopeBtn = $("envelopeBtn");
@@ -280,16 +338,16 @@
       envelopeBtn?.closest?.(".envelope") ||
       (envelopeBtn?.classList?.contains("envelope") ? envelopeBtn : null);
 
-    // padding automático: DOMContentLoaded + window.load (garante)
     if (envelopeEl) applyAutoPadding(envelopeEl);
     window.addEventListener(
       "load",
       () => {
         if (envelopeEl) applyAutoPadding(envelopeEl);
+        // recalc máscara com assets já carregados + viewport estável
+        setMaskFromCSS();
       },
       { passive: true }
     );
-
 
     let detachedCard = null;
 
@@ -301,11 +359,9 @@
 
       const root = document.documentElement;
 
-      // Mede o tamanho "alvo" do fx-clip a escala 1
       const prevStart = getComputedStyle(root).getPropertyValue("--cover-zoom-start").trim();
       root.style.setProperty("--cover-zoom-start", "1");
 
-      // Força layout com start=1
       void fxClip.offsetWidth;
 
       const target = fxClip.getBoundingClientRect();
@@ -314,16 +370,12 @@
         return;
       }
 
-      // Calcula escala para o fx-clip ficar do tamanho do cartão final
       const rw = cardRect.width / target.width;
       const rh = cardRect.height / target.height;
-
-      // Escolhe a menor para garantir que não começa maior (evita “pop”)
       const s = Math.min(rw, rh);
 
       root.style.setProperty("--cover-zoom-start", s.toFixed(4));
     }
-
 
     function showCover() {
       document.body.classList.remove("fx-run", "fx-end");
@@ -332,29 +384,23 @@
 
       if (!cover) return;
 
-      cover.classList.remove("lock-zoom"); // ✅ deixa o zoom-in acontecer
-
-      // Mostra cover (mas ainda sem "active", para preparar o estado inicial)
+      cover.classList.remove("lock-zoom");
       cover.hidden = false;
       cover.classList.remove("active");
       if (coverHandle) coverHandle.disabled = true;
 
-      // Atualiza máscara (precisa do cover visível no DOM)
+      // garante vars atualizadas antes de medir
+      updateViewportVars();
       setMaskFromCSS();
 
-      // ✅ sincroniza o zoom-start com o tamanho do cartão final
       if (detachedCard) {
         const r = detachedCard.getBoundingClientRect();
         syncCoverStartFromCard(r);
-
-        // ✅ crossfade para não se notar a troca (mesma imagem)
         detachedCard.style.opacity = "0";
       }
 
-      // Força o browser a “assentar” o estado inicial antes de animar
       void cover.offsetWidth;
 
-      // Agora sim: entra o cover e faz o zoom para 1
       cover.classList.add("active");
 
       if (!coverStage) {
@@ -375,42 +421,32 @@
         flipSection.classList.remove("active");
         flipSection.hidden = true;
       }
-
     }
 
-
     function goToFinalText() {
-      // 1) Mostra o flip por trás (ainda invisível)
       if (flipSection) {
         flipSection.hidden = false;
-        // força layout para garantir que já está renderizado
         void flipSection.offsetWidth;
-        // fade-in do flip
         flipSection.classList.add("active");
       }
 
-      // reset do flip
       flipInner?.classList.remove("is-flipped");
       flipStage?.classList.remove("is-flipped");
 
-      // 2) Agora sim: fade-out do cover (sem cortar com hidden)
       if (cover) {
         const onEnd = (e) => {
           if (e.propertyName !== "opacity") return;
           cover.removeEventListener("transitionend", onEnd);
-          cover.hidden = true; // só aqui escondes de vez
+          cover.hidden = true;
         };
-
         cover.addEventListener("transitionend", onEnd);
-        cover.hidden = true;
-        cover.classList.add("lock-zoom");     // ✅ trava o scale no fim
-        void cover.offsetWidth;              // (opcional) força layout
-        cover.classList.remove("active");    // fade-out sem “mini zoom”
 
-        
+        // ✅ não esconder já (senão mata o fade-out)
+        cover.classList.add("lock-zoom");
+        void cover.offsetWidth;
+        cover.classList.remove("active");
       }
     }
-
 
     function startFx() {
       if (!coverReady || fxStarted) return;
@@ -437,49 +473,34 @@
           tapHint.style.transform = "translateX(-50%) translateY(-6px)";
         }
 
-        // ✅ elimina “subida” na abertura: start = preview (mesmo que no :root seja 100%)
         const preview = getComputedStyle(document.documentElement)
           .getPropertyValue("--card-preview")
           .trim();
         if (preview) envelopeEl.style.setProperty("--card-start", preview);
 
-        // ✅ garante padding calculado antes de começar (se já estiver tudo pronto)
         applyAutoPadding(envelopeEl);
 
-        // ✅ abre flap + mostra cartão logo no início
         envelopeEl.classList.add("open-flap", "reveal-card");
 
-        // ✅ quando o flap termina, baixa o z-index do flap (preview-card)
         setTimeout(() => envelopeEl.classList.add("preview-card"), FLAP_MS + 20);
-
-        // ✅ depois do preview, puxa o cartão
         setTimeout(() => envelopeEl.classList.add("pull-card"), FLAP_MS + PREVIEW_MS + 40);
 
-        // timing base
         const tPullEnd = FLAP_MS + PREVIEW_MS + CARD_MS;
 
-        // ✅ 1) antes do zoom: envelope sai + cartão desce/centra
         setTimeout(() => {
           envelopeEl.classList.add("exit");
-
-          // opcional mas recomendado: remove o pull-card para garantir que a “tapa” desaparece
           envelopeEl.classList.remove("pull-card");
         }, tPullEnd + 60);
 
-        // ✅ 2) só depois disso é que começa o cover/zoom
         setTimeout(() => {
           const card = envelopeEl.querySelector(".env-card");
           if (card) {
-            // 1) mede a posição atual (ainda “peek”)
             const r = card.getBoundingClientRect();
 
-            // 2) destaca o cartão para fora do env-mask (senão vai junto com o envelope)
             hero?.appendChild(card);
             card.classList.add("detached");
             detachedCard = card;
 
-
-            // 3) congela visualmente no mesmo sítio (fixed no viewport)
             card.style.position = "fixed";
             card.style.left = `${r.left}px`;
             card.style.top = `${r.top}px`;
@@ -488,12 +509,13 @@
             card.style.margin = "0";
             card.style.transform = "none";
 
-            // velocidade do “descer para o centro”
             card.style.setProperty("--card-move-dur", `${EXIT_CARD_MS}ms`);
 
-            // 4) anima até ao centro do ecrã
-            const cx = window.innerWidth / 2;
-            const cy = window.innerHeight / 2;
+            // ✅ usa visualViewport (quando existe) para centrar no "visível"
+            const vp = getViewport();
+            const cx = vp.offsetLeft + vp.width / 2;
+            const cy = vp.offsetTop + vp.height / 2;
+
             const dx = cx - (r.left + r.width / 2);
             const dy = cy - (r.top + r.height / 2);
 
@@ -502,7 +524,6 @@
             });
           }
 
-          // 5) agora sim: envelope pode sair
           envelopeEl.classList.add("exit");
         }, tPullEnd + 60);
 
@@ -510,8 +531,6 @@
           showCover();
           setTimeout(() => hero?.remove(), 300);
         }, tPullEnd + 60 + EXIT_MS + 80);
-
-
       });
     }
 
@@ -530,17 +549,17 @@
       });
     }
 
-    window.addEventListener(
-      "resize",
-      () => {
-        buildSlices(fxSlices);
-        setMaskFromCSS();
-        if (envelopeEl) applyAutoPadding(envelopeEl);
-      },
-      { passive: true }
-    );
+    // refresh completo em resize (tamanho/orientação)
+    const refreshLayout = () => {
+      updateViewportVars();
+      buildSlices(fxSlices);
+      setMaskFromCSS();
+      if (envelopeEl) applyAutoPadding(envelopeEl);
+    };
+
+    window.addEventListener("resize", refreshLayout, { passive: true });
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", refreshLayout, { passive: true });
 
     wireCalendarAndMaps();
-
   });
 })();

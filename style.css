@@ -15,43 +15,68 @@ html, body{
   color: var(--fg);
 }
 
+/* =========================
+   ROOT / RESPONSIVE SYSTEM
+   - --app-h: altura estável (tipo "svh") para evitar saltos no mobile
+   - --dvh/--dvw: viewport atual (pode variar quando barras mudam)
+   - --scale: escala baseada num "design size" (JS define)
+   ========================= */
 :root{
+  /* Base design (referência para escala) */
+  --design-w: 390;
+  --design-h: 844;
+
+  /* Atualizado pelo JS */
+  --scale: 1;
+  --dvw: 100vw;
+  --dvh: 100vh;
+  --app-h: 100vh;
+  --dpr: 1;
+
+  /* UI spacing escalável */
+  --gutter: clamp(12px, calc(16px * var(--scale)), 20px);
+
+  /* Cores */
   --bg:#f7f8f9;
   --fg:#0f172a;
   --surface:#ffffff;
   --muted:#64748b;
 
+  /* Estética (escalável com clamp para não exagerar) */
   --shadow: 0 18px 44px rgba(15,23,42,.16);
-  --radius: 18px;
+  --radius: clamp(14px, calc(18px * var(--scale)), 22px);
   --easing: cubic-bezier(.22,1,.36,1);
 
   /* ✅ Reserva inferior comum (cover + flip) para não haver “salto” */
-  --ui-reserve: calc(110px + env(safe-area-inset-bottom));
+  --ui-reserve: calc(clamp(92px, calc(110px * var(--scale)), 136px) + env(safe-area-inset-bottom));
 
-  /* Card sizes (FX) */
-  --card-width: min(340px, 74vw);
+  /* Card sizes (FX / flip) */
+  --card-width: min(calc(340px * var(--scale)), 74vw);
   --card-ar: 3 / 4.4;
 
-  /* Máscara (meias-luas) */
-  --notch-w: 1.755cm;
-  --notch-h: 0.655cm;
+  /* Máscara (meias-luas)
+     ⚠️ removido "cm" (instável entre dispositivos).
+     Usamos rácios do tamanho do cartão (mais consistente). */
+  --notch-w-r: 0.195; /* ~66px em card 340px */
+  --notch-h-r: 0.050; /* ~25px em card ~499px */
+
   --mask-scale-x: 0.73;
   --mask-scale-y: 0.75;
-  --mask-shift-x: 0px;
-  --mask-shift-y: 9px;
-  --mask-corner: 16;
+  --mask-shift-x: calc(0px * var(--scale));
+  --mask-shift-y: calc(9px * var(--scale));
+  --mask-corner: 16;  /* valores de SVG (não px), ok manter */
   --mask-topr: 20;
   --fx-mask: none;
 
   /* Alinhamento foto_capa <-> texto.png */
   --media-scale: 1;
-  --media-x: 0px;
-  --media-y: 0px;
+  --media-x: calc(0px * var(--scale));
+  --media-y: calc(0px * var(--scale));
 
   /* Alinhamento only_foto <-> foto_capa */
   --slice-photo-scale: 1;
-  --slice-photo-x: 0px;
-  --slice-photo-y: 0px;
+  --slice-photo-x: calc(0px * var(--scale));
+  --slice-photo-y: calc(0px * var(--scale));
 
   /* Envelope timing */
   --dur-flap: 1800ms;
@@ -62,7 +87,7 @@ html, body{
   --paper-opacity: 0.7;
   --paper-strength: 1.7;
   --seam-opacity: 1;
-  --seam-width: 3px;
+  --seam-width: clamp(2px, calc(3px * var(--scale)), 4px);
   --stroke-opacity: 1;
 
   /* Envelope colors */
@@ -73,9 +98,9 @@ html, body{
   --stroke-light: rgba(255,255,255,.22);
   --stroke-dark: rgba(15,23,42,.12);
 
-  /* Logo */
-  --logo-x:-15px;
-  --logo-y:65px;
+  /* Logo (escalável) */
+  --logo-x: calc(var(--scale) * -15px);
+  --logo-y: calc(var(--scale) * 65px);
 
   /* Motion (3 fases) */
   --card-start: 0%;
@@ -96,8 +121,8 @@ html, body{
   --card-shadow-a: 1;
 
   /* Imagem dentro do cartão */
-  --card-img-x: 0px;
-  --card-img-y: 0px;
+  --card-img-x: calc(0px * var(--scale));
+  --card-img-y: calc(0px * var(--scale));
   --card-fit: contain;
 
   /* ✅ padding automático (JS escreve aqui) */
@@ -113,7 +138,9 @@ html, body{
 
   --dur-exit-env: 520ms;   /* envelope desce mais rápido */
   --dur-exit-card: 900ms;  /* cartão desce mais lento */
-  --env-exit-y: 140vh;     /* garante que sai do ecrã */
+
+  /* Evita vh instável: usa dvh (custom prop) com fallback */
+  --env-exit-y: calc(var(--dvh, 100vh) * 1.4);
 
   /* Cover zoom */
   --cover-zoom-start: 0.5;
@@ -121,7 +148,11 @@ html, body{
   --cover-zoom-dur: 1500ms;
 }
 
-.app{ min-height:100dvh; }
+/* altura estável aplicada ao app */
+.app{
+  min-height: var(--app-h, 100vh);
+  -webkit-tap-highlight-color: transparent;
+}
 
 :focus-visible{
   outline: 3px solid rgba(99,102,241,.65);
@@ -133,10 +164,10 @@ html, body{
    HERO / ENVELOPE
    ========================= */
 .hero{
-  height:100dvh;
+  min-height: var(--app-h, 100vh);
   display:grid;
   place-items:center;
-  padding:0 16px;
+  padding:0 var(--gutter);
   background:var(--surface);
 }
 
@@ -148,7 +179,7 @@ html, body{
 .tap-hint{
   position:absolute;
   left:50%;
-  top:-36px;
+  top: calc(var(--scale) * -36px);
   transform:translateX(-50%);
   font-size:.95rem;
   color:var(--muted);
@@ -164,8 +195,10 @@ html, body{
   cursor:pointer;
   touch-action:manipulation;
   padding:0;
-  width:min(90vw, 420px);
+
+  width:min(90vw, calc(420px * var(--scale)));
   aspect-ratio: 3 / 2;
+
   isolation:isolate;
   transition: transform 220ms var(--easing), filter 220ms var(--easing);
 }
@@ -341,7 +374,7 @@ html, body{
   left:-80vw;
   right:-80vw;
   top:100%;
-  height:120vh;
+  height: calc(var(--dvh, 100vh) * 1.2);
   background: var(--surface);
   z-index:999;
   pointer-events:none;
@@ -368,7 +401,7 @@ html, body{
   pointer-events:none;
 }
 
-/* envelope sai (podes animar o env-mask porque o cartão já foi destacado) */
+/* envelope sai */
 .envelope.exit{
   pointer-events:none;
 }
@@ -387,12 +420,6 @@ html, body{
   will-change: transform, opacity;
 }
 
-/* opcional: também faz o hint desaparecer */
-.envelope.exit + .tap-hint,
-.envelope.exit .tap-hint{
-  opacity:0;
-}
-
 /* =========================
    FLAP
    ========================= */
@@ -406,7 +433,7 @@ html, body{
   transition: transform var(--dur-flap) var(--easing);
   display:grid;
   place-items:start center;
-  padding-top:16px;
+  padding-top: var(--gutter);
   pointer-events:none;
   filter: drop-shadow(0 8px 14px rgba(0,0,0,.08));
 }
@@ -456,14 +483,14 @@ html, body{
 .flap-logo{
   position:relative;
   z-index:999;
-  width:110px;
+  width: calc(110px * var(--scale));
   height:auto;
   transform: translate(var(--logo-x), var(--logo-y));
   filter: drop-shadow(0 2px 6px rgba(0,0,0,.18));
   pointer-events:none;
 }
 
-/* flap tem transform próprio: mantém a rotação e soma o translate */
+/* flap tem transform próprio */
 .envelope.exit .env-flap-group{
   transition:
     transform var(--dur-exit-env) var(--easing),
@@ -513,7 +540,7 @@ html, body{
 
 .fx{
   position:absolute;
-  inset: 16px 16px var(--ui-reserve) 16px; /* ✅ igual ao flip */
+  inset: var(--gutter) var(--gutter) var(--ui-reserve) var(--gutter);
   display:grid;
   place-items:center;
 }
@@ -527,7 +554,6 @@ html, body{
   transform: translateZ(0);
   will-change: transform;
 }
-
 
 .fx-photo-out{
   position:absolute;
@@ -598,7 +624,8 @@ body.fx-end .fx-photo-out{ display:none; }
   transform: translate3d(var(--media-x), var(--media-y), 0) scale(var(--media-scale));
   will-change: transform;
   backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;}
+  -webkit-backface-visibility: hidden;
+}
 
 .fx-slices{
   position:absolute;
@@ -650,15 +677,17 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
   position:absolute;
   left:50%;
   transform:translateX(-50%);
-  bottom:max(16px, env(safe-area-inset-bottom));
+  bottom:max(var(--gutter), env(safe-area-inset-bottom));
   border:none;
   border-radius:999px;
-  padding:11px 14px;
+
+  padding: calc(11px * var(--scale)) calc(14px * var(--scale));
   cursor:pointer;
   touch-action:manipulation;
   display:inline-flex;
   align-items:center;
-  gap:10px;
+  gap: calc(10px * var(--scale));
+
   box-shadow: 0 10px 24px rgba(0,0,0,.10);
   background:#fff;
   color:#0f172a;
@@ -669,7 +698,8 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
 .handle[disabled]{ opacity:.55; cursor:default; }
 
 .handle-bar{
-  width:28px; height:6px;
+  width: calc(28px * var(--scale));
+  height: calc(6px * var(--scale));
   border-radius:999px;
   background: rgba(15,23,42,.35);
 }
@@ -693,12 +723,12 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
   pointer-events:auto;
 }
 
-/* ✅ padding igual ao cover (e com reserva em baixo) */
+/* padding igual ao cover (e com reserva em baixo) */
 .stage-center{
-  height:100dvh;
+  min-height: var(--app-h, 100vh);
   display:grid;
   place-items:center;
-  padding: 16px 16px var(--ui-reserve) 16px;
+  padding: var(--gutter) var(--gutter) var(--ui-reserve) var(--gutter);
 }
 
 .stage-frame{
@@ -744,7 +774,6 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
   padding:0;
 }
 
-
 .texto-img{
   width:100%;
   height:100%;
@@ -754,20 +783,21 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
   transform: translate3d(var(--media-x), var(--media-y), 0) scale(var(--media-scale));
   will-change: transform;
   backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;}
+  -webkit-backface-visibility: hidden;
+}
 
 .texto2-link{ display:block; width:100%; height:100%; }
 
-/* ✅ Botões e hint “fora” do flip (sem 3D) e no fundo do ecrã */
+/* Botões e hint fora do flip */
 .back-actions{
   position:fixed;
   left:50%;
-  bottom:max(16px, env(safe-area-inset-bottom));
+  bottom:max(var(--gutter), env(safe-area-inset-bottom));
   transform:translateX(-50%) translateY(10px);
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:10px;
+  gap: calc(10px * var(--scale));
   z-index:200;
   opacity:0;
   pointer-events:none;
@@ -784,7 +814,7 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
 .pill{
   border:0;
   border-radius:999px;
-  padding:10px 12px;
+  padding: calc(10px * var(--scale)) calc(12px * var(--scale));
   font-weight:850;
   cursor:pointer;
   background: rgba(15,23,42,.88);
@@ -805,12 +835,12 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
 .tap-to-flip-hint{
   position:fixed;
   left:50%;
-  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 54px); /* ✅ sempre visível, acima dos botões */
+  bottom: calc(max(var(--gutter), env(safe-area-inset-bottom)) + calc(54px * var(--scale)));
   transform:translateX(-50%);
   font-size:.9rem;
   color:rgba(100,116,139,.9);
   background: rgba(255,255,255,.76);
-  padding:8px 10px;
+  padding: calc(8px * var(--scale)) calc(10px * var(--scale));
   border-radius:999px;
   backdrop-filter: blur(8px);
   pointer-events:none;
@@ -818,7 +848,6 @@ body.fx-run .fx-band{ transform: translateY(calc(100% + var(--slice-gap))); }
   z-index:200;
   transition: opacity 240ms var(--easing), transform 240ms var(--easing);
 }
-
 
 @media (prefers-reduced-motion: reduce){
   .env-flap-group, .env-card, .cover, .cover-stage, .fx-band, .flip-3d-inner{ transition:none !important; }
