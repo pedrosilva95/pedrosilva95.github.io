@@ -34,29 +34,41 @@
     };
   };
 
+  let lastGood = { w: window.innerWidth, h: window.innerHeight };
+
   function updateViewportVars({ forceReset = false } = {}) {
     const root = document.documentElement;
-    const vp = getViewport();
 
-    const w = Math.round(vp.width);
-    const h = Math.round(vp.height);
+    const vv = window.visualViewport;
+    const layoutW = Math.round(document.documentElement.clientWidth || window.innerWidth);
+    const layoutH = Math.round(document.documentElement.clientHeight || window.innerHeight);
 
-    // reset “baseline” em mudanças grandes de largura/orientação
-    const widthChanged = lastW == null ? true : Math.abs(w - lastW) > 40;
-    if (stableH == null || forceReset || widthChanged) stableH = h;
-    else stableH = Math.min(stableH, h);
+    // usamos visualViewport quando existe, mas com "guard rails"
+    let w = Math.round((vv && vv.width) ? vv.width : layoutW);
+    let h = Math.round((vv && vv.height) ? vv.height : layoutH);
 
-    lastW = w;
+    // ✅ Android durante rotação pode dar valores minúsculos (1..100). Ignora.
+    if (w < 240 || h < 240) {
+      w = lastGood.w;
+      h = lastGood.h;
+    } else {
+      lastGood = { w, h };
+    }
+
+    // ✅ app-h: usa layout viewport (mais estável) com guarda
+    let appH = layoutH;
+    if (appH < 240) appH = lastGood.h;
 
     root.style.setProperty("--dvw", `${w}px`);
     root.style.setProperty("--dvh", `${h}px`);
-    root.style.setProperty("--app-h", `${stableH}px`);
+    root.style.setProperty("--app-h", `${appH}px`);
     root.style.setProperty("--dpr", String(window.devicePixelRatio || 1));
 
-    const s = Math.min(w / DESIGN_W, stableH / DESIGN_H);
+    const s = Math.min(w / DESIGN_W, appH / DESIGN_H);
     const clamped = Math.max(SCALE_MIN, Math.min(s, SCALE_MAX));
     root.style.setProperty("--scale", clamped.toFixed(4));
   }
+
 
   function scheduleViewportUpdate(opts) {
     if (rafVp) cancelAnimationFrame(rafVp);
@@ -296,7 +308,11 @@
 
     // mantém atualizado (inclui iOS/Android antigos com fallback)
     window.addEventListener("resize", () => scheduleViewportUpdate(), { passive: true });
-    window.addEventListener("orientationchange", () => scheduleViewportUpdate({ forceReset: true }), { passive: true });
+    window.addEventListener("orientationchange", () => {
+      scheduleViewportUpdate({ forceReset: true });
+      setTimeout(() => scheduleViewportUpdate({ forceReset: true }), 120);
+      setTimeout(() => scheduleViewportUpdate({ forceReset: true }), 420);
+    }, { passive: true });
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", () => scheduleViewportUpdate(), { passive: true });
@@ -409,13 +425,23 @@
         return;
       }
 
+      const rootCSS = getComputedStyle(document.documentElement);
+      const COVER_ZOOM_MS = cssTimeToMs(rootCSS.getPropertyValue("--cover-zoom-dur")) || 1500;
+
+      let fallbackTimer = setTimeout(() => {
+        coverReady = true;
+        if (coverHandle) coverHandle.disabled = false;
+      }, COVER_ZOOM_MS + 120);
+
       const onEnd = (e) => {
         if (e.propertyName !== "transform") return;
+        clearTimeout(fallbackTimer);
         coverStage.removeEventListener("transitionend", onEnd);
         coverReady = true;
         if (coverHandle) coverHandle.disabled = false;
       };
       coverStage.addEventListener("transitionend", onEnd, { passive: true });
+
 
       if (flipSection) {
         flipSection.classList.remove("active");

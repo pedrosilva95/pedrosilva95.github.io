@@ -201,6 +201,9 @@ html, body{
 
   isolation:isolate;
   transition: transform 220ms var(--easing), filter 220ms var(--easing);
+
+  perspective: 1400px;
+  -webkit-perspective: 1400px;
 }
 @media (hover:hover){
   .envelope:hover{ transform: translateY(-2px); filter: brightness(1.02); }
@@ -429,7 +432,7 @@ html, body{
   height:68%;
   z-index:110;
   transform-origin: 50% 0%;
-  transform: perspective(1400px) rotateX(0deg);
+  transform: rotateX(0deg);
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
   transition: transform var(--dur-flap) var(--easing);
@@ -441,7 +444,10 @@ html, body{
   isolation: isolate;
 }
 
-.envelope.open-flap .env-flap-group{ z-index:140; }
+.envelope.open-flap .env-flap-group{ 
+  z-index:140;
+  transform: rotateX(var(--flap-rot));
+}
 .envelope.preview-card .env-flap-group{ z-index:50; }
 .envelope.pull-card .env-flap-group{ z-index:50; }
 
@@ -504,7 +510,7 @@ html, body{
   transition:
     transform var(--dur-exit-env) var(--easing),
     opacity 240ms var(--easing);
-  transform: translateY(var(--env-exit-y)) perspective(1400px) rotateX(var(--flap-rot));
+  transform: translateY(var(--env-exit-y)) rotateX(var(--flap-rot));
   opacity:0;
   will-change: transform, opacity;
 }
