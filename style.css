@@ -130,8 +130,8 @@ html, body{
   --card-pad-y: 0px;
 
   /* FX */
-  --fx-delay: 100ms;
-  --dur-cortina: 3200ms;
+  --fx-delay: 0ms;
+  --dur-cortina: 3000ms;
   --slices: 5;
   --slice-gap: 0px;
   --slice-seam-opacity: 0;
